@@ -190,18 +190,22 @@ body.is-login::after { content: ""; position: fixed; inset: 0; pointer-events: n
 .board li b { font-size: 17px; font-weight: 800; font-stretch: 110%; }
 .board li .muted { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ln { font: 600 11px "JetBrains Mono", monospace; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 4px 0; text-align: center; }
-.idade { font-size: 19px; font-weight: 600; color: var(--text); margin-bottom: -8px; }
-.wide .hl { color: var(--purple); }
-.login-hero .wide { font-size: clamp(40px, 6.4vw, 78px); }
-@media (max-width: 919px) { .login-card { order: -1; position: static; } }
-.bens { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.bens li { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); font-size: 15px; }
-.bens li b { color: var(--purple); }
-.bic { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--purple); color: var(--purple); font-size: 15px; }
-.cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--line)); border-radius: 14px; }
-.cta div { display: grid; font-size: 22px; font-weight: 800; line-height: 1.15; }
-.cta .hl { color: var(--purple); font-size: 30px; font-weight: 900; }
-.cta .btn { background: var(--purple); border-color: var(--purple); color: var(--ink); }
+.vs { border: 1px solid var(--line2); border-radius: 14px; background: var(--bg2); padding: 16px; display: grid; gap: 14px; }
+.vs-par { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: start; min-height: 150px; }
+.vs-on, .vs-pre { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.vs-on .kick { color: var(--accent); }
+.vs-on b { font-size: 20px; font-weight: 800; line-height: 1.15; }
+.vs-pre b { font-size: 20px; font-weight: 600; line-height: 1.15; color: var(--muted); }
+.vs-on .vs-x { color: var(--ok); font-size: 14px; }
+.vs-pre .vs-x { color: var(--bad); font-size: 14px; }
+.vs-mid { align-self: center; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--accent); color: var(--accent); display: grid; place-items: center; font: 700 14px "JetBrains Mono", monospace; }
+.vs-nav { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.vs-dots { display: flex; gap: 6px; }
+.vs-dots button { width: 22px; height: 4px; padding: 0; border: 0; border-radius: 4px; background: var(--line2); cursor: pointer; }
+.vs-dots button[aria-current] { background: var(--accent); }
+.vs-n { color: var(--accent); font-size: 12px; margin-left: auto; }
+.vs-prox { min-height: 40px; padding: 0 16px; font-size: 14px; color: var(--accent); border-color: var(--accent); }
+@media (max-width: 520px) { .vs-on b, .vs-pre b { font-size: 17px; } .vs-mid { width: 36px; height: 36px; font-size: 12px; } }
 .board.faixas { margin-top: 0; }
 .board.faixas li { display: block; padding: 0; }
 .brow { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 156px) minmax(0, 1fr); gap: 14px; align-items: center; padding: 11px 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }

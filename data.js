@@ -21,16 +21,15 @@ const FASES = [
 ];
 
 /* Meta de XP por fase. Hoje é 400 em todas; a proposta 400/700/600/600 ainda está aberta. */
-/* Tela de entrada: os benefícios do flyer da ERON. A comparação online x presencial fica na landing page. */
-const BENEFICIOS = [
-  ['▣', 'Receba seu kit de robótica', 'em casa.'],
-  ['◎', 'Fortalece o raciocínio lógico e matemático', 'de forma divertida.'],
-  ['▶', 'Assista à aula', 'da sua casa.'],
-  ['⊘', 'Sem estresse', 'com trânsito.'],
-  ['◷', 'Escolha o melhor horário', 'na rotina.'],
-  ['◉', 'Aulas ao vivo,', 'turmas pequenas.']
+/* Tela de entrada: comparação online x presencial, um par por vez. Os benefícios do flyer ficam na landing page. */
+const VANTAGENS = [
+  { on: 'O kit chega na sua casa', onx: 'Dá pra continuar explorando no tempo livre', pre: 'O kit fica na escola', prex: 'Limita a exploração do aluno' },
+  { on: 'O laboratório é a sua mesa', onx: 'Autonomia e responsabilidade pra organizar o próprio espaço', pre: 'O professor faz pelo aluno', prex: 'Quebra de autonomia' },
+  { on: 'Aulas ao vivo pra tirar dúvidas', onx: 'Mentoria e acompanhamento individual', pre: 'Turma cheia', prex: 'Atenção dividida com vários alunos' },
+  { on: 'Flexibilidade de horário', onx: 'Encaixa no melhor horário da rotina', pre: 'Horário fixo', prex: 'Difícil de encaixar na rotina' },
+  { on: 'Evita deslocamento', onx: 'O tempo é dinheiro', pre: 'Trânsito e deslocamento', prex: 'Tempo perdido, estresse' },
+  { on: 'Preço que só o online permite', onx: 'Preços acessíveis', pre: 'Estrutura física cara', prex: 'Preços elevados' }
 ];
-const CONTATO = 'https://wa.me/5585998202414';
 
 const META_XP = { 1: 400, 2: 400, 3: 400, 4: 400, 5: 0 };
 
