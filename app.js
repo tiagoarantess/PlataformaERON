@@ -165,7 +165,7 @@ function telaLogin() {
   </div>`;
   const vsTela = () => {
     const v = VANTAGENS[vi], n = VANTAGENS.length;
-    $('#vs').innerHTML = `<div class="vs-par"><div class="vs-on"><span class="kick">Online</span><b>${esc(v.on)}</b><span class="vs-x">✓ ${esc(v.onx)}</span></div>
+    $('#vs').innerHTML = `<div class="vs-par"><div class="vs-on"><span class="kick">Online</span><b>${esc(v.on)}</b>${[].concat(v.onx).map(t => `<span class="vs-x">✓ ${esc(t)}</span>`).join('')}</div>
       <span class="vs-mid" aria-hidden="true">vs</span>
       <div class="vs-pre"><span class="kick">Presencial</span><b>${esc(v.pre)}</b><span class="vs-x">✕ ${esc(v.prex)}</span></div></div>
       <div class="vs-nav"><div class="vs-dots">${VANTAGENS.map((_, i) => `<button type="button" data-vs="${i}" aria-label="Comparação ${i + 1}" ${i === vi ? 'aria-current="true"' : ''}></button>`).join('')}</div>

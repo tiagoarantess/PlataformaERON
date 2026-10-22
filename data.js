@@ -25,7 +25,7 @@ const FASES = [
 const VANTAGENS = [
   { on: 'O kit chega na sua casa', onx: 'Dá pra continuar explorando no tempo livre', pre: 'O kit fica na escola', prex: 'Limita a exploração do aluno' },
   { on: 'O laboratório é a sua mesa', onx: 'Autonomia e responsabilidade pra organizar o próprio espaço', pre: 'O professor faz pelo aluno', prex: 'Quebra de autonomia' },
-  { on: 'Aulas ao vivo pra tirar dúvidas', onx: 'Mentoria e acompanhamento individual', pre: 'Turma cheia', prex: 'Atenção dividida com vários alunos' },
+  { on: 'Turmas pequenas', onx: ['Aulas coletivas ao vivo pra tirar dúvidas', 'Mentoria e acompanhamento individual'], pre: 'Turma cheia', prex: 'Atenção dividida com vários alunos' },
   { on: 'Flexibilidade de horário', onx: 'Encaixa no melhor horário da rotina', pre: 'Horário fixo', prex: 'Difícil de encaixar na rotina' },
   { on: 'Evita deslocamento', onx: 'O tempo é dinheiro', pre: 'Trânsito e deslocamento', prex: 'Tempo perdido, estresse' },
   { on: 'Preço que só o online permite', onx: 'Preços acessíveis', pre: 'Estrutura física cara', prex: 'Preços elevados' }
