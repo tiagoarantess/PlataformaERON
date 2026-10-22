@@ -39,6 +39,7 @@ const ACOES = {
   documentar: { nome: 'Documentou o projeto', xp: 15, curto: 'Documentou' },
   fds:        { nome: 'Desafio de fim de semana', xp: 10, curto: 'Fim de semana' },
   ajudar:     { nome: 'Ajudou um colega',    xp: 15, curto: 'Ajudou' },
+  kit:        { nome: 'Kit organizado (foto até 1h depois da aula)', xp: 10, curto: 'Kit organizado' },
   checkpoint: { nome: 'Passou no checkpoint', xp: 100, curto: 'Checkpoint' }
 };
 
@@ -51,15 +52,15 @@ const MISSOES = [
   { id: 'f1a3', fase: 1, aula: 3, titulo: 'Botão que liga e desliga',
     tarefas: [['Assistir a aula ao vivo', 'aula'], ['Usar variável de estado no botão', 'desafio'], ['Desafio de fim de semana: botão com 3 modos', 'fds']] },
   { id: 'f2a13', fase: 2, aula: 13, titulo: 'Faça o robô andar 2 metros em linha reta',
-    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Ajustar o PWM dos dois motores', 'desafio'], ['Gravar o vídeo do robô', 'documentar'], ['Ajudar um colega no grupo', 'ajudar']] },
+    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Ajustar o PWM dos dois motores', 'desafio'], ['Gravar o vídeo do robô', 'documentar'], ['Ajudar um colega no grupo', 'ajudar'], ['Foto do kit organizado até 1h depois da aula', 'kit']] },
   { id: 'f2a14', fase: 2, aula: 14, titulo: 'Ler a linha com um sensor TCRT5000',
-    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Mostrar no monitor serial o preto e o branco', 'desafio'], ['Desafio de fim de semana: pista de fita isolante', 'fds']] },
+    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Mostrar no monitor serial o preto e o branco', 'desafio'], ['Desafio de fim de semana: pista de fita isolante', 'fds'], ['Foto do kit organizado até 1h depois da aula', 'kit']] },
   { id: 'f3a23', fase: 3, aula: 23, titulo: 'Máquina de estados: decidir o que fazer',
-    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Desenhar os estados no papel', 'documentar'], ['Robô para, desvia e volta pra linha', 'desafio']] },
+    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Desenhar os estados no papel', 'documentar'], ['Robô para, desvia e volta pra linha', 'desafio'], ['Foto do kit organizado até 1h depois da aula', 'kit']] },
   { id: 'f4a33', fase: 4, aula: 33, titulo: 'Projetar a missão de resgate no papel',
-    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Desenhar o caminho até a área', 'documentar'], ['Garra pega e solta a bolinha 3 vezes', 'desafio']] },
+    tarefas: [['Assistir a aula ao vivo', 'aula'], ['Desenhar o caminho até a área', 'documentar'], ['Garra pega e solta a bolinha 3 vezes', 'desafio'], ['Foto do kit organizado até 1h depois da aula', 'kit']] },
   { id: 'f5t1', fase: 5, aula: 0, titulo: 'Treino de pista cronometrada',
-    tarefas: [['Treino ao vivo com a equipe', 'aula'], ['Bater o próprio tempo na pista', 'desafio'], ['Ensinar um aluno da Fase 1', 'ajudar']] }
+    tarefas: [['Treino ao vivo com a equipe', 'aula'], ['Bater o próprio tempo na pista', 'desafio'], ['Ensinar um aluno da Fase 1', 'ajudar'], ['Foto do kit organizado até 1h depois da aula', 'kit']] }
 ];
 
 /* Turma fictícia. As datas são geradas a partir de hoje, então o exemplo nunca envelhece. */

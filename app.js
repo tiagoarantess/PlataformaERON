@@ -452,7 +452,7 @@ function cardAluno(a, f) {
   const xp = xpFase(a), meta = META_XP[a.fase], pc = percentil(a);
   const ult = a.hist.length ? a.hist.reduce((m, h) => h.d > m ? h.d : m, a.hist[0].d) : null;
   const parado = ult && semanaIdx(ult) >= 2;
-  const acts = ['aula', 'desafio', 'documentar', 'fds', 'ajudar'];
+  const acts = ['aula', 'desafio', 'documentar', 'fds', 'ajudar'].concat(a.fase > 1 ? ['kit'] : []);
   const hist = a.hist.map((h, i) => [h, i]).slice(-12).reverse();
   return `<div class="card top-bar c-${f.cor}">
     <div class="st-head"><span class="av">${iniciais(a.nome)}</span>

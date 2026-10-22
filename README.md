@@ -33,7 +33,7 @@ Pra testar no computador, é só abrir o `index.html` no navegador.
 - XP registra progresso. **Quem sobe de faixa é o checkpoint** (o exame de faixa), nunca o XP.
 - Percentil compara só alunos da mesma faixa.
 - Cada fase do plano de aulas é uma faixa: Fase 1 Amarela, Fase 2 Verde, Fase 3 Azul, Fase 4 Roxa. Depois do 4º checkpoint o aluno vira **faixa preta** e segue treinando.
-- Tabela de XP: aula 10, desafio 20, documentar 15, fim de semana 10, ajudar colega 15, checkpoint 100. Meta de 400 por fase (`META_XP` em `data.js`).
+- Tabela de XP: aula 10, desafio 20, documentar 15, fim de semana 10, ajudar colega 15, foto do kit organizado até 1h depois da aula 10 (a partir da Fase 2, quando o kit chega), checkpoint 100. Meta de 400 por fase (`META_XP` em `data.js`).
 
 ## Limite desta versão
 
