@@ -3,21 +3,21 @@
    Os alunos são fictícios. Troque pelos reais no painel do professor ou editando SEED. */
 
 const FASES = [
-  { id: 1, nome: 'Recruta', cor: 'green', aulas: 7, titulo: 'Projeta no simulador',
+  { id: 1, nome: 'Faixa Amarela', cor: 'yellow', aulas: 7, titulo: 'Projeta no simulador',
     resumo: 'Começa no 1º dia, sem esperar o kit. LED, botão, buzzer, sensor de luz e motor no Tinkercad.',
     checkpoint: 'Motores funcionando no simulador e na protoboard.' },
-  { id: 2, nome: 'Piloto', cor: 'orange', aulas: 12, titulo: 'O robô ganha vida',
+  { id: 2, nome: 'Faixa Verde', cor: 'green', aulas: 12, titulo: 'O robô ganha vida',
     resumo: 'O kit chega. Monta o chassi, liga a ponte H e faz o robô andar sozinho.',
     checkpoint: 'Motor no chassi e sensor de obstáculo funcionando.' },
-  { id: 3, nome: 'Estrategista', cor: 'purple', aulas: 10, titulo: 'O robô pensa',
+  { id: 3, nome: 'Faixa Azul', cor: 'blue', aulas: 10, titulo: 'O robô pensa',
     resumo: 'Ultrassônico, máquina de estados e sensor de cor. O robô decide o que fazer.',
     checkpoint: 'Desviar, seguir linha e ler sinais no chão.' },
-  { id: 4, nome: 'Resgate', cor: 'blue', aulas: 10, titulo: 'Missão de competição',
+  { id: 4, nome: 'Faixa Roxa', cor: 'purple', aulas: 10, titulo: 'Missão de competição',
     resumo: 'Servo, garra e missão de busca e resgate, nos moldes do maior torneio do Brasil.',
     checkpoint: 'Pegar as bolinhas e levar pra área de resgate.' },
-  { id: 5, nome: 'Faixa preta', cor: 'belt', aulas: 0, titulo: 'Treina até o pódio',
+  { id: 5, nome: 'Faixa Preta', cor: 'belt', aulas: 0, titulo: 'Treina até o pódio',
     resumo: 'Segue treinando e se aperfeiçoando em desafios de competição.',
-    checkpoint: 'Sem fase seguinte. Marcos: primeira competição, primeira medalha.' }
+    checkpoint: 'Sem faixa seguinte. Marcos: primeira competição, primeira medalha.' }
 ];
 
 /* Meta de XP por fase. Hoje é 400 em todas; a proposta 400/700/600/600 ainda está aberta. */

@@ -1,6 +1,6 @@
 # Plataforma ERON
 
-Plataforma do aluno da ERON: trilha de 4 fases até a faixa preta, XP, percentil, missão da semana, portfólio, painel dos pais e painel do professor.
+Plataforma do aluno da ERON: trilha de 4 faixas (amarela, verde, azul, roxa) até a faixa preta, XP, percentil, missão da semana, portfólio, painel dos pais e painel do professor.
 
 Site estático: HTML, CSS e JavaScript puro. Não precisa de servidor, banco nem instalação.
 
@@ -24,15 +24,15 @@ Pra testar no computador, é só abrir o `index.html` no navegador.
 ## Telas
 
 - `#/entrar` tela de login (aluno, pais ou professor).
-- `#/aluno/ID/trilha` (trilha horizontal com as 5 fases; embaixo, pontos (XP), aula atual e checkpoint, toque numa fase pra ver o detalhe), `/missao` (tarefas, envio do vídeo, conquista mais próxima), `/turma`, `/portfolio`: telas do aluno.
+- `#/aluno/ID/trilha` (trilha horizontal com as 5 faixas; embaixo, pontos (XP), aula atual e checkpoint, toque numa fase pra ver o detalhe), `/missao` (tarefas, envio do vídeo, conquista mais próxima), `/turma`, `/portfolio`: telas do aluno.
 - `#/pais/ID`: painel da família.
 - `#/professor`: registrar aula, dar XP, aprovar checkpoint, mandar recado, adicionar aluno, exportar e importar a turma.
 
 ## Regras que o código segue
 
-- XP registra progresso. **Quem promove de fase é o checkpoint**, nunca o XP.
-- Percentil compara só alunos da mesma fase.
-- Depois da Fase 4 o aluno vira **faixa preta** e segue treinando.
+- XP registra progresso. **Quem sobe de faixa é o checkpoint** (o exame de faixa), nunca o XP.
+- Percentil compara só alunos da mesma faixa.
+- Cada fase do plano de aulas é uma faixa: Fase 1 Amarela, Fase 2 Verde, Fase 3 Azul, Fase 4 Roxa. Depois do 4º checkpoint o aluno vira **faixa preta** e segue treinando.
 - Tabela de XP: aula 10, desafio 20, documentar 15, fim de semana 10, ajudar colega 15, checkpoint 100. Meta de 400 por fase (`META_XP` em `data.js`).
 
 ## Limite desta versão

@@ -54,9 +54,9 @@ function conquistas(a) {
     ['3', 'Sequência de 3', '3 semanas seguidas', sequencia(a) >= 3],
     ['♥', 'Mão amiga', 'Ajudou 3 colegas', n('ajudar') >= 3],
     ['▶', 'Criador', 'Postou um vídeo', a.videos.length > 0],
-    ['✓', 'Checkpoint', 'Passou de fase', a.checkpoints.some(c => c.ok)],
-    ['■', 'Faixa preta', 'Terminou as 4 fases', a.fase === 5]
-  ].concat(a.fase < 5 ? [['★', fase(a.fase).nome + ' firme', 'Meta de XP da Fase ' + a.fase, xpFase(a) >= META_XP[a.fase]]] : []);
+    ['✓', 'Checkpoint', 'Subiu de faixa', a.checkpoints.some(c => c.ok)],
+    ['■', 'Faixa Preta', 'Passou nos 4 checkpoints', a.fase === 5]
+  ].concat(a.fase < 5 ? [['★', 'Meta da ' + fase(a.fase).nome, 'Bateu a meta de XP da faixa', xpFase(a) >= META_XP[a.fase]]] : []);
 }
 /* A conquista mais perto de sair, com o que falta. */
 function proximaConquista(a) {
@@ -66,10 +66,10 @@ function proximaConquista(a) {
     'Sequência de 3': [3 - seq, `Falta${3 - seq > 1 ? 'm' : ''} ${3 - seq} semana${3 - seq > 1 ? 's' : ''} seguida${3 - seq > 1 ? 's' : ''}`],
     'Mão amiga': [3 - n('ajudar'), `Falta ajudar ${3 - n('ajudar')} colega${3 - n('ajudar') > 1 ? 's' : ''}`],
     'Criador': [1, 'Falta 1 vídeo da missão'],
-    'Checkpoint': [2, `Passe no checkpoint da Fase ${a.fase}`],
-    'Faixa preta': [9, 'Termine as 4 fases']
+    'Checkpoint': [2, `Passe no checkpoint da ${fase(a.fase).nome}`],
+    'Faixa Preta': [9, 'Passe nos 4 checkpoints']
   };
-  if (a.fase < 5) { const r = META_XP[a.fase] - xpFase(a); falta[fase(a.fase).nome + ' firme'] = [r / 15, `Falta${r > 1 ? 'm' : ''} ${r} XP`]; }
+  if (a.fase < 5) { const r = META_XP[a.fase] - xpFase(a); falta['Meta da ' + fase(a.fase).nome] = [r / 15, `Falta${r > 1 ? 'm' : ''} ${r} XP`]; }
   const abertas = conquistas(a).filter(c => !c[3]).map(c => ({ ic: c[0], nome: c[1], resto: falta[c[1]][0], txt: falta[c[1]][1] }));
   return abertas.sort((x, y) => x.resto - y.resto)[0] || null;
 }
@@ -145,7 +145,7 @@ function telaLogin() {
       <span class="kick live"><i></i>Estação ERON · plataforma do aluno</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
-      <p class="lead">Quatro fases, um checkpoint por fase e a faixa preta no fim da linha. Entra pra ver onde você está.</p>
+      <p class="lead">Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Entra pra ver onde você está.</p>
       <div class="board"><div class="row"><span class="kick">Linhas da trilha</span><span class="kick" id="relogio"></span></div><ol>${linhas}</ol></div>
     </section>
     <form class="card login-card c-${P.cor}" id="flogin" novalidate>
@@ -198,12 +198,12 @@ function telaAluno(a, aba) {
   const meta = META_XP[a.fase], xp = xpFase(a), pc = percentil(a), seq = sequencia(a);
   const resumo = `
     <div class="card top-bar c-${f.cor}">
-      ${a.fase < 5 ? `<div class="row"><span class="kick">Pontos (XP) da fase</span><span class="num" style="color:var(--c);font-weight:700">${xp} / ${meta}</span></div>
+      ${a.fase < 5 ? `<div class="row"><span class="kick">Pontos (XP) da faixa</span><span class="num" style="color:var(--c);font-weight:700">${xp} / ${meta}</span></div>
       <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${meta}" aria-valuenow="${xp}"><i style="width:${Math.min(100, xp / meta * 100)}%"></i></div>
       ${xp >= meta ? `<p class="muted" style="margin-top:8px;font-size:13px">Meta batida. Agora quem promove é o checkpoint.</p>` : ''}`
       : `<div class="row"><span class="kick">Faixa preta</span><span class="num" style="font-weight:700">${xpTotal(a)} pontos (XP) no total</span></div>`}
       <div class="row" style="margin-top:14px;align-items:end">
-        <div><div class="big">${pc ? 'Top ' + pc.top + '%' : '—'}</div><div class="muted" style="font-size:13px">${pc ? pc.pos + 'º de ' + pc.n + ' na ' + (a.fase < 5 ? 'Fase ' + a.fase : 'faixa preta') : 'Único aluno nesta fase'}</div></div>
+        <div><div class="big">${pc ? 'Top ' + pc.top + '%' : '—'}</div><div class="muted" style="font-size:13px">${pc ? pc.pos + 'º de ' + pc.n + ' na ' + f.nome : 'Único aluno nesta faixa'}</div></div>
         <div style="text-align:right"><div class="big" style="color:var(--accent)">${seq}</div><div class="muted" style="font-size:13px">${seq === 1 ? 'semana' : 'semanas'} seguidas</div></div>
       </div>
     </div>`;
@@ -257,11 +257,11 @@ function telaAluno(a, aba) {
   if (aba === 'turma') {
     const pares = S.alunos.filter(x => x.fase === a.fase).sort((x, y) => xpFase(y) - xpFase(x));
     const ajudas = S.alunos.map(x => [x, x.hist.filter(h => h.a === 'ajudar' && semanaIdx(h.d) < 4).length]).filter(([, n]) => n > 0).sort((x, y) => y[1] - x[1]);
-    $('#app').innerHTML = `${head('Turma', a.fase < 5 ? 'Ranking da Fase ' + a.fase : 'Ranking dos faixas pretas')}
+    $('#app').innerHTML = `${head('Turma', a.fase < 5 ? 'Ranking da ' + fase(a.fase).nome : 'Ranking dos faixas pretas')}
       <div class="cols">
         <div class="card"><ol class="rank">${pares.map((x, i) => `
           <li class="${x.id === a.id ? 'me' : ''}"><span class="pos">${i + 1}º</span><span class="av">${iniciais(x.nome)}</span><span>${esc(x.nome)}${x.id === a.id ? ' (você)' : ''}</span><span class="num">${xpFase(x)} XP</span></li>`).join('')}</ol>
-          <p class="note" style="margin-top:10px">O ranking compara só quem está na mesma fase. Quem entrou depois não fica sempre no fim da fila.</p>
+          <p class="note" style="margin-top:10px">O ranking compara só quem está na mesma faixa. Quem entrou depois não fica sempre no fim da fila.</p>
         </div>
         <div class="card"><span class="kick" style="color:var(--green)">Mão amiga · último mês</span>
           ${ajudas.length ? `<ul class="list" style="margin-top:10px">${ajudas.map(([x, n]) => `<li class="row"><span>${esc(x.nome)}</span><span class="pill c-green">ajudou ${n}x</span></li>`).join('')}</ul>` : '<p class="muted" style="margin-top:8px">Ninguém ainda. Ajudar um colega vale +15 XP.</p>'}
@@ -295,14 +295,14 @@ function telaAluno(a, aba) {
   const total = FASES.reduce((t, x) => t + x.aulas, 0);
   const aulaFase = m && m.aula ? m.aula - inicio : null;
   const aulaInfo = a.fase < 5 && m && m.aula
-    ? `<div class="aula-atual"><span class="kick">Aula atual</span><b>Aula ${m.aula} de ${total}</b><span class="muted">${aulaFase}ª de ${f.aulas} na Fase ${a.fase} · ${esc(m.titulo)}</span></div>`
+    ? `<div class="aula-atual"><span class="kick">Aula atual</span><b>Aula ${m.aula} de ${total}</b><span class="muted">${aulaFase}ª de ${f.aulas} na ${f.nome} · ${esc(m.titulo)}</span></div>`
     : `<div class="aula-atual"><span class="kick">Treino atual</span><b>${esc(m ? m.titulo : 'Treino livre')}</b></div>`;
-  $('#app').innerHTML = `${head('Minha trilha', a.fase < 5 ? `Fase ${a.fase} · ${f.nome}` : 'Faixa preta')}
+  $('#app').innerHTML = `${head('Minha trilha', f.nome)}
     <div class="card"><div class="mapa-h"><div class="mapa-h-in">
       <svg viewBox="0 0 ${LARG} ${ALT}" aria-hidden="true">${pts.slice(0, -1).map((p, k) =>
         `<path d="${trecho(k)}" class="${FASES[k + 1].id <= a.fase ? 'feito' : ''}"/>`).join('')}</svg>
       ${FASES.map((x, k) => { const st = estado(x), p = pts[k];
-        const dot = st === 'done' ? '✓' : x.id === 5 ? '<span class="belt"></span>' : x.id;
+        const dot = st === 'done' ? '✓' : '<span class="belt"></span>';
         const tag = st === 'done' ? 'Checkpoint ok' : st === 'now' ? 'Você está aqui' : 'Bloqueada';
         return `<button class="no-h ${st} c-${x.cor} ${k % 2 ? 'cima' : ''}" style="left:${p.x}%;top:${p.y / ALT * 100}%" data-f="${x.id}" aria-label="${esc(x.nome)}: ${tag}">
           <span class="dot">${dot}</span><span class="rot"><b>${esc(x.nome)}</b><small>${tag}</small></span></button>`; }).join('')}
@@ -316,11 +316,11 @@ function telaAluno(a, aba) {
   const detalhe = id => {
     const x = fase(id), st = estado(x);
     $('#det').className = `card top-bar c-${x.cor}`;
-    $('#det').innerHTML = `<span class="kick" style="color:var(--c)">${x.id < 5 ? 'Fase ' + x.id : 'Depois da Fase 4'} · ${x.aulas ? x.aulas + ' aulas' : 'sem prazo'}</span>
+    $('#det').innerHTML = `<span class="kick" style="color:var(--c)">${x.id < 5 ? 'Fase ' + x.id + ' · ' + x.aulas + ' aulas' : 'Depois dos 4 checkpoints · sem prazo'}</span>
       <p style="font-weight:800;font-size:18px;margin-top:6px">${esc(x.nome)}: ${esc(x.titulo)}</p>
       <p class="muted" style="margin-top:4px">${esc(x.resumo)}</p>
       <p style="margin-top:10px;font-size:14px"><span class="kick">Checkpoint</span><br>${esc(x.checkpoint)}</p>
-      ${st === 'lock' ? '<p class="note" style="margin-top:8px">Abre quando você passar no checkpoint da fase anterior.</p>' : ''}`;
+      ${st === 'lock' ? '<p class="note" style="margin-top:8px">Abre quando você passar no checkpoint da faixa anterior.</p>' : ''}`;
     document.querySelectorAll('.no-h').forEach(b => b.classList.toggle('sel', +b.dataset.f === id));
   };
   document.querySelectorAll('.no-h').forEach(b => b.onclick = () => detalhe(+b.dataset.f));
@@ -340,7 +340,7 @@ function telaPais(a) {
   const ultimoCp = a.checkpoints.filter(c => c.ok).slice(-1)[0];
   $('#app').innerHTML = `
     <div class="stack" style="gap:4px"><span class="kick">Painel da família</span>
-      <h1 class="h1">${esc(a.nome)} está ${a.fase < 5 ? `na Fase ${a.fase} · ${f.nome}` : 'na faixa preta'}${ultimoCp ? `, passou de fase em ${fmt(ultimoCp.d)}` : ''}.</h1></div>
+      <h1 class="h1">${esc(a.nome)} está na ${f.nome}${ultimoCp ? `, subiu de faixa em ${fmt(ultimoCp.d)}` : ''}.</h1></div>
     <div class="cols">
       <div class="stack">
         <div class="grid3">
@@ -351,7 +351,7 @@ function telaPais(a) {
         <div class="card"><div class="row"><span class="kick">XP por semana</span><span class="note">últimas 6</span></div>
           <div class="weeks" role="img" aria-label="XP nas últimas 6 semanas: ${sem.join(', ')}">${sem.map((v, i) => `<div><span><i style="height:${Math.round(v / max * 100)}%"></i></span><small>${i === 5 ? 'agora' : v}</small></div>`).join('')}</div>
         </div>
-        ${a.fase < 5 ? `<div class="card top-bar c-${f.cor}"><span class="kick" style="color:var(--c)">O que falta pra passar de fase</span><p style="font-weight:700;margin-top:6px">${esc(f.checkpoint)}</p><p class="muted" style="font-size:14px;margin-top:4px">Na ERON quem promove é o checkpoint, um desafio prático. Tempo e presença sozinhos não passam de fase.</p></div>` : ''}
+        ${a.fase < 5 ? `<div class="card top-bar c-${f.cor}"><span class="kick" style="color:var(--c)">O que falta pra subir de faixa</span><p style="font-weight:700;margin-top:6px">${esc(f.checkpoint)}</p><p class="muted" style="font-size:14px;margin-top:4px">Na ERON o checkpoint é o exame de faixa: um desafio prático, ao vivo. Tempo e presença sozinhos não sobem ninguém de faixa.</p></div>` : ''}
       </div>
       <div class="stack">
         <div class="card"><span class="kick" style="color:var(--accent)">Recado do professor</span>
@@ -384,12 +384,12 @@ function telaProfessor() {
       </div>
     </div>
     ${porFase.map(([f, l]) => `
-      <section class="stack"><h2 class="h2">${f.id < 5 ? 'Fase ' + f.id + ' · ' : ''}${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· ${l.length} ${l.length === 1 ? 'aluno' : 'alunos'}</span></h2>
+      <section class="stack"><h2 class="h2">${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· ${l.length} ${l.length === 1 ? 'aluno' : 'alunos'}</span></h2>
       <div class="students">${l.map(a => cardAluno(a, f)).join('')}</div></section>`).join('')}
     <form class="card stack" id="novo">
       <span class="kick">Adicionar aluno</span>
       <div class="grid3"><label>Nome<input type="text" id="nn" required maxlength="40"></label><label>Idade<input type="number" id="ni" min="5" max="17" value="10"></label>
-      <label>Fase<select id="nf">${FASES.map(f => `<option value="${f.id}">${f.id < 5 ? 'Fase ' + f.id + ' · ' : ''}${f.nome}</option>`).join('')}</select></label></div>
+      <label>Faixa<select id="nf">${FASES.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select></label></div>
       <button class="btn btn-fill" type="submit" style="justify-self:start">Adicionar</button>
     </form>`;
 
@@ -401,7 +401,7 @@ function telaProfessor() {
     const a = aluno(b.dataset.id), act = b.dataset.act;
     if (act === 'ok' || act === 'refaz') {
       const de = a.fase; checkpoint(a, act === 'ok');
-      toast(act === 'ok' ? `${a.nome} passou! ${a.fase === 5 ? 'Faixa preta.' : 'Agora na Fase ' + a.fase + '.'}` : `${a.nome} refaz o checkpoint da Fase ${de}`);
+      toast(act === 'ok' ? `${a.nome} passou! ${'Agora na ' + fase(a.fase).nome + '.'}` : `${a.nome} refaz o checkpoint da ${fase(de).nome}`);
     } else if (act === 'del') {
       if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirmar remoção'; return; }
       S.alunos = S.alunos.filter(x => x !== a); toast('Aluno removido');
