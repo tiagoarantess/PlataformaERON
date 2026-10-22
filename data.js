@@ -21,6 +21,17 @@ const FASES = [
 ];
 
 /* Meta de XP por fase. Hoje é 400 em todas; a proposta 400/700/600/600 ainda está aberta. */
+/* Tela de entrada: os benefícios do flyer da ERON. A comparação online x presencial fica na landing page. */
+const BENEFICIOS = [
+  ['▣', 'Receba seu kit de robótica', 'em casa.'],
+  ['◎', 'Fortalece o raciocínio lógico e matemático', 'de forma divertida.'],
+  ['▶', 'Assista à aula', 'da sua casa.'],
+  ['⊘', 'Sem estresse', 'com trânsito.'],
+  ['◷', 'Escolha o melhor horário', 'na rotina.'],
+  ['◉', 'Aulas ao vivo,', 'turmas pequenas.']
+];
+const CONTATO = 'https://wa.me/5585998202414';
+
 const META_XP = { 1: 400, 2: 400, 3: 400, 4: 400, 5: 0 };
 
 const ACOES = {

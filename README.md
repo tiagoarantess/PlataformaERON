@@ -23,8 +23,8 @@ Pra testar no computador, é só abrir o `index.html` no navegador.
 
 ## Telas
 
-- `#/entrar` tela de login (aluno, pais ou professor).
-- `#/aluno/ID/trilha` (trilha horizontal com as 5 faixas; embaixo, pontos (XP), aula atual e checkpoint, toque numa fase pra ver o detalhe), `/missao` (tarefas, envio do vídeo, conquista mais próxima), `/turma`, `/portfolio`: telas do aluno.
+- `#/entrar` tela de entrada: benefícios do flyer da ERON, chamada pro WhatsApp e login (aluno, pais ou professor). A comparação online x presencial fica na landing page, não aqui.
+- `#/aluno/ID/trilha` (trilha horizontal com as 5 faixas; embaixo, pontos (XP), aula atual e checkpoint, ao lado, o quadro "Faixas da trilha" F1 a FP; toque numa faixa pra ver o checkpoint dela), `/missao` (tarefas, envio do vídeo, conquista mais próxima), `/turma`, `/portfolio`: telas do aluno.
 - `#/pais/ID`: painel da família.
 - `#/professor`: registrar aula, dar XP, aprovar checkpoint, mandar recado, adicionar aluno, exportar e importar a turma.
 

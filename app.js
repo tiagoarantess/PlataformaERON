@@ -138,15 +138,17 @@ function acharAluno(txt) {
 function telaLogin() {
   setWho(''); setTabs(null);
   const P = PAPEIS[papelLogin];
-  const linhas = FASES.map(f => `<li class="c-${f.cor}"><span class="ln">${f.id < 5 ? 'L' + f.id : 'FP'}</span><b>${f.nome}</b><span class="muted">${esc(f.titulo)}</span></li>`).join('');
+  const bens = BENEFICIOS.map(([ic, a, b]) => `<li><span class="bic" aria-hidden="true">${ic}</span><span>${esc(a)} <b>${esc(b)}</b></span></li>`).join('');
   $('#app').innerHTML = `
   <div class="login">
     <section class="login-hero">
-      <span class="kick live"><i></i>Estação ERON · plataforma do aluno</span>
-      <h1 class="wide">Entrar<br>na trilha.</h1>
+      <span class="kick live"><i></i>ERON · Escola de Robótica Online</span>
+      <p class="idade">A partir de 5 anos até alunos do ensino médio</p>
+      <h1 class="wide">Aprenda de <span class="hl">verdade.</span></h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
-      <p class="lead">Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Entra pra ver onde você está.</p>
-      <div class="board"><div class="row"><span class="kick">Linhas da trilha</span><span class="kick" id="relogio"></span></div><ol>${linhas}</ol></div>
+      <p class="lead">Qualidade do presencial, preço que só o online permite.</p>
+      <ul class="bens">${bens}</ul>
+      <div class="cta"><div><b>Garanta sua vaga.</b><span class="hl">Conheça.</span></div><a class="btn btn-fill" href="${CONTATO}" target="_blank" rel="noopener">Falar com a ERON</a></div>
     </section>
     <form class="card login-card c-${P.cor}" id="flogin" novalidate>
       <div class="seg" role="tablist" aria-label="Quem está entrando">${Object.entries(PAPEIS).map(([k, v]) =>
@@ -163,8 +165,6 @@ function telaLogin() {
           : S.alunos.map(a => `<button type="button" class="chip" data-rapido="${a.id}">${esc(a.nome)}</button>`).join('')}</div></div>
     </form>
   </div>`;
-  const tick = () => { const el = $('#relogio'); if (el) el.textContent = 'Agora ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
-  tick(); clearInterval(telaLogin.t); telaLogin.t = setInterval(tick, 15000);
   document.querySelectorAll('[data-papel]').forEach(b => b.onclick = () => { papelLogin = b.dataset.papel; telaLogin(); $('#lu').focus(); });
   const erro = m => { const e = $('#lerr'); e.textContent = m; e.hidden = !m; };
   function fazerLogin(user) {
@@ -176,7 +176,7 @@ function telaLogin() {
       s = { papel: papelLogin, id: a.id, nome: a.nome };
     }
     erro(''); const go = $('#lgo'); go.disabled = true; go.textContent = 'Entrando…';
-    setTimeout(() => { clearInterval(telaLogin.t); entrar(s); location.hash = casa(s); render(); toast(papelLogin === 'aluno' ? `Bem-vindo de volta, ${s.nome}!` : 'Login feito'); }, 650);
+    setTimeout(() => { entrar(s); location.hash = casa(s); render(); toast(papelLogin === 'aluno' ? `Bem-vindo de volta, ${s.nome}!` : 'Login feito'); }, 650);
   }
   $('#flogin').onsubmit = e => {
     e.preventDefault();
@@ -311,16 +311,18 @@ function telaAluno(a, aba) {
       <div class="stack">${resumo.replace('<div class="row" style="margin-top:14px;align-items:end">', aulaInfo + '<div class="row" style="margin-top:14px;align-items:end">')}
         ${a.fase < 5 ? `<div class="card chk c-${f.cor}"><span class="kick" style="color:var(--c)">Próximo checkpoint</span><p style="font-weight:700;font-size:17px;margin-top:6px">${esc(f.checkpoint)}</p>${S.proximoCheckpoint ? `<p class="muted" style="font-size:13px;margin-top:4px">Marcado pra ${fmt(S.proximoCheckpoint)}</p>` : ''}</div>` : ''}
       </div>
-      <div class="card" id="det"></div>
+      <div class="board faixas" id="det"></div>
     </div>`;
   const detalhe = id => {
-    const x = fase(id), st = estado(x);
-    $('#det').className = `card top-bar c-${x.cor}`;
-    $('#det').innerHTML = `<span class="kick" style="color:var(--c)">${x.id < 5 ? 'Fase ' + x.id + ' · ' + x.aulas + ' aulas' : 'Depois dos 4 checkpoints · sem prazo'}</span>
-      <p style="font-weight:800;font-size:18px;margin-top:6px">${esc(x.nome)}: ${esc(x.titulo)}</p>
-      <p class="muted" style="margin-top:4px">${esc(x.resumo)}</p>
-      <p style="margin-top:10px;font-size:14px"><span class="kick">Checkpoint</span><br>${esc(x.checkpoint)}</p>
-      ${st === 'lock' ? '<p class="note" style="margin-top:8px">Abre quando você passar no checkpoint da faixa anterior.</p>' : ''}`;
+    $('#det').innerHTML = `<div class="row"><span class="kick">Faixas da trilha</span><span class="kick" id="relogio"></span></div><ol>${FASES.map(x => {
+      const st = estado(x), tag = st === 'done' ? 'Checkpoint ok' : st === 'now' ? 'Você está aqui' : 'Bloqueada';
+      return `<li class="c-${x.cor} ${st} ${x.id === id ? 'sel' : ''}"><button type="button" class="brow" data-f="${x.id}" aria-expanded="${x.id === id}">
+        <span class="ln">${x.id < 5 ? 'F' + x.id : 'FP'}</span><b>${esc(x.nome)}</b><span class="muted">${st === 'lock' ? esc(x.titulo) : tag}</span></button>
+        ${x.id === id ? `<div class="bdet"><p>${esc(x.titulo)}${x.aulas ? ' · ' + x.aulas + ' aulas' : ' · sem prazo'}. ${esc(x.resumo)}</p>
+          <p><span class="kick">Checkpoint</span><br>${esc(x.checkpoint)}</p>
+          ${st === 'lock' ? '<p class="note">Abre quando você passar no checkpoint da faixa anterior.</p>' : ''}</div>` : ''}</li>`; }).join('')}</ol>`;
+    const el = $('#relogio'); if (el) el.textContent = 'Agora ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    document.querySelectorAll('.brow').forEach(b => b.onclick = () => detalhe(+b.dataset.f));
     document.querySelectorAll('.no-h').forEach(b => b.classList.toggle('sel', +b.dataset.f === id));
   };
   document.querySelectorAll('.no-h').forEach(b => b.onclick = () => detalhe(+b.dataset.f));

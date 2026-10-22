@@ -190,6 +190,30 @@ body.is-login::after { content: ""; position: fixed; inset: 0; pointer-events: n
 .board li b { font-size: 17px; font-weight: 800; font-stretch: 110%; }
 .board li .muted { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ln { font: 600 11px "JetBrains Mono", monospace; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 4px 0; text-align: center; }
+.idade { font-size: 19px; font-weight: 600; color: var(--text); margin-bottom: -8px; }
+.wide .hl { color: var(--purple); }
+.login-hero .wide { font-size: clamp(40px, 6.4vw, 78px); }
+@media (max-width: 919px) { .login-card { order: -1; position: static; } }
+.bens { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.bens li { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); font-size: 15px; }
+.bens li b { color: var(--purple); }
+.bic { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--purple); color: var(--purple); font-size: 15px; }
+.cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--line)); border-radius: 14px; }
+.cta div { display: grid; font-size: 22px; font-weight: 800; line-height: 1.15; }
+.cta .hl { color: var(--purple); font-size: 30px; font-weight: 900; }
+.cta .btn { background: var(--purple); border-color: var(--purple); color: var(--ink); }
+.board.faixas { margin-top: 0; }
+.board.faixas li { display: block; padding: 0; }
+.brow { width: 100%; display: grid; grid-template-columns: 44px minmax(0, 156px) minmax(0, 1fr); gap: 14px; align-items: center; padding: 11px 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.brow b { font-size: 17px; font-weight: 800; font-stretch: 110%; }
+.brow .muted { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.faixas li.now .brow .muted { color: var(--c); }
+.faixas li.lock .brow b { color: var(--muted); }
+.faixas li.done .ln { background: var(--c); color: var(--ink); }
+.faixas li.sel { background: color-mix(in srgb, var(--c) 7%, transparent); margin-inline: -16px; padding-inline: 16px; }
+.bdet { display: grid; gap: 8px; padding: 0 0 14px 58px; font-size: 14px; color: var(--muted); }
+.bdet p:nth-child(2) { color: var(--text); }
+@media (max-width: 520px) { .brow { grid-template-columns: 40px minmax(0, 1fr); } .brow .muted { display: none; } .bdet { padding-left: 0; } }
 @media (max-width: 520px) { .board li { grid-template-columns: 40px minmax(0, 1fr); } .board li .muted { display: none; } }
 .login-card { display: grid; gap: 14px; position: sticky; top: 84px; box-shadow: 0 30px 80px -40px color-mix(in srgb, var(--c) 60%, transparent); border-color: color-mix(in srgb, var(--c) 30%, var(--line)); }
 .login-card label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
