@@ -1,4 +1,4 @@
-/* Plataforma ERON: aluno, pais e professor num site estático.
+/* Plataforma ERON: Creator, pai/mãe e professor num site estático.
    Os dados ficam no navegador (localStorage). Exportar/Importar leva a turma pra outro computador. */
 
 const KEY = 'eron-plataforma-v1';
@@ -15,10 +15,12 @@ function load() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) { s = null; }
   if (!s || !Array.isArray(s.alunos)) s = JSON.parse(JSON.stringify(SEED));
-  s.alunos.forEach(a => a.hist.forEach(h => { if (!h.f) h.f = a.fase; }));
+  s.alunos.forEach(a => { a.hist.forEach(h => { if (!h.f) h.f = a.fase; }); if (!a.semana) a.semana = fase(a.fase).ini; });
+  s.aulas = s.aulas || {};          // o que o professor editou por cima do plano de 48 semanas
+  s.midiaComp = s.midiaComp || [];  // vídeos e fotos de competição que o professor sobe (Faixa Preta)
   return s;
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* sem armazenamento: segue em memória */ } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { /* sem armazenamento: segue em memória */ return false; } }
 const aluno = id => S.alunos.find(a => a.id === id);
 
 /* ---------- regras ---------- */
@@ -80,9 +82,29 @@ function checkpoint(a, ok) {
   a.checkpoints.push({ fase: a.fase, d: hoje(), ok });
   if (ok) {
     registrar(a, 'checkpoint');
-    if (a.fase < 5) a.fase++;
+    if (a.fase < 5) { a.fase++; a.semana = Math.max(a.semana, fase(a.fase).ini); }
   }
 }
+
+const tituloSemana = n => (S.aulas[n] && S.aulas[n].aula) || PLANO[n - 1][1];
+
+/* ---------- Oficina 3D (Three.js num módulo à parte, carrega só quando alguém abre) ---------- */
+let OF = null;
+const oficinaHost = {
+  aula: n => S.aulas[n] || null,
+  salvarAula: (n, p) => { if (p) S.aulas[n] = p; else delete S.aulas[n]; save(); toast(p ? 'Aula salva' : 'Aula voltou ao plano original'); },
+  midia: () => S.midiaComp,
+  addMidia: m => { S.midiaComp.push(Object.assign({ d: hoje() }, m)); if (save()) toast('Exemplo adicionado'); else { S.midiaComp.pop(); toast('Sem espaço no navegador. Use um link em vez do arquivo.'); } },
+  delMidia: i => { S.midiaComp.splice(i, 1); save(); }
+};
+function oficina(op) {
+  document.body.classList.add('of-wide');
+  const slot = $('#ofslot');
+  (OF ? Promise.resolve(OF) : import('./oficina.js').then(m => (OF = m)))
+    .then(m => { if (slot.isConnected) m.montar(slot, Object.assign({ host: oficinaHost }, op)); })
+    .catch(() => { if (slot.isConnected) slot.innerHTML = '<p class="muted">Não deu pra carregar o 3D. Confira a internet e recarregue a página.</p>'; });
+}
+const slot3d = '<div id="ofslot" class="card ofslot"><span class="kick">montando a oficina 3D…</span></div>';
 
 /* ---------- casca ---------- */
 function toast(msg) {
@@ -111,6 +133,8 @@ function casa(s) { return s.papel === 'professor' ? '#/professor' : `#/${s.papel
 function render() {
   const p = location.hash.replace(/^#\/?/, '').split('/');
   window.scrollTo(0, 0);
+  if (OF) OF.pausar();
+  document.body.classList.remove('of-wide');
   document.body.classList.toggle('is-login', !SESSAO);
   if (!SESSAO || p[0] === 'entrar') { if (SESSAO) { location.hash = casa(SESSAO); return; } return telaLogin(); }
   // cada perfil só vê o que é dele; o professor vê tudo
@@ -119,15 +143,15 @@ function render() {
   }
   if (p[0] === 'aluno' && aluno(p[1])) return telaAluno(aluno(p[1]), p[2] || 'trilha');
   if (p[0] === 'pais' && aluno(p[1])) return telaPais(aluno(p[1]));
-  if (p[0] === 'professor') return telaProfessor();
+  if (p[0] === 'professor') return p[1] === 'aulas' ? telaProfAulas() : telaProfessor();
   location.hash = casa(SESSAO);
 }
 window.addEventListener('hashchange', render);
 
 /* ---------- login ---------- */
 const PAPEIS = {
-  aluno:     { nome: 'Aluno',     cor: 'blue',   campo: 'Seu código de aluno', ph: 'luna', dica: 'Use o código que veio no e-mail de boas-vindas.' },
-  pais:      { nome: 'Pais',      cor: 'orange', campo: 'E-mail do responsável', ph: 'voce@email.com', dica: 'O mesmo e-mail do contrato.' },
+  aluno:     { nome: 'Creator',   cor: 'blue',   campo: 'Seu código de Creator', ph: 'luna', dica: 'Use o código que veio no e-mail de boas-vindas.' },
+  pais:      { nome: 'Pai/Mãe',   cor: 'orange', campo: 'E-mail do responsável', ph: 'voce@email.com', dica: 'O mesmo e-mail do contrato.' },
   professor: { nome: 'Professor', cor: 'green',  campo: 'E-mail da ERON', ph: 'professor@eron.com.br', dica: 'Acesso da equipe.' }
 };
 let papelLogin = 'aluno';
@@ -142,7 +166,7 @@ function telaLogin() {
   $('#app').innerHTML = `
   <div class="login">
     <section class="login-hero">
-      <span class="kick live"><i></i>Estação ERON · plataforma do aluno</span>
+      <span class="kick live"><i></i>Estação ERON · plataforma do Creator</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
       <p class="lead">Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Entra pra ver onde você está.</p>
@@ -181,7 +205,7 @@ function telaLogin() {
     if (papelLogin === 'professor') s = { papel: 'professor', id: 'prof', nome: 'Professor' };
     else {
       const a = acharAluno(user);
-      if (!a) return erro(`Não achamos "${user}". Na demo, use o nome de um aluno: ${S.alunos.map(x => x.id).join(', ')}.`);
+      if (!a) return erro(`Não achamos "${user}". Na demo, use o nome de um Creator: ${S.alunos.map(x => x.id).join(', ')}.`);
       s = { papel: papelLogin, id: a.id, nome: a.nome };
     }
     erro(''); const go = $('#lgo'); go.disabled = true; go.textContent = 'Entrando…';
@@ -202,7 +226,7 @@ function telaLogin() {
 function telaAluno(a, aba) {
   const base = `#/aluno/${a.id}`;
   setWho(`<span class="name">${esc(a.nome)}</span><span class="av">${iniciais(a.nome)}</span>`);
-  setTabs([[base + '/trilha', 'Trilha'], [base + '/missao', 'Missão'], [base + '/turma', 'Turma'], [base + '/portfolio', 'Portfólio']], base + '/' + aba);
+  setTabs([[base + '/trilha', 'Trilha'], [base + '/oficina', 'Oficina 3D'], [base + '/missao', 'Missão'], [base + '/turma', 'Turma'], [base + '/portfolio', 'Portfólio']], base + '/' + aba);
   const f = fase(a.fase);
   const meta = META_XP[a.fase], xp = xpFase(a), pc = percentil(a), seq = sequencia(a);
   const resumo = `
@@ -212,11 +236,26 @@ function telaAluno(a, aba) {
       ${xp >= meta ? `<p class="muted" style="margin-top:8px;font-size:13px">Meta batida. Agora quem promove é o checkpoint.</p>` : ''}`
       : `<div class="row"><span class="kick">Faixa preta</span><span class="num" style="font-weight:700">${xpTotal(a)} pontos (XP) no total</span></div>`}
       <div class="row" style="margin-top:14px;align-items:end">
-        <div><div class="big">${pc ? 'Top ' + pc.top + '%' : '—'}</div><div class="muted" style="font-size:13px">${pc ? pc.pos + 'º de ' + pc.n + ' na ' + f.nome : 'Único aluno nesta faixa'}</div></div>
+        <div><div class="big">${pc ? 'Top ' + pc.top + '%' : '—'}</div><div class="muted" style="font-size:13px">${pc ? pc.pos + 'º de ' + pc.n + ' na ' + f.nome : 'Único Creator nesta faixa'}</div></div>
         <div style="text-align:right"><div class="big" style="color:var(--accent)">${seq}</div><div class="muted" style="font-size:13px">${seq === 1 ? 'semana' : 'semanas'} seguidas</div></div>
       </div>
     </div>`;
   const head = (k, t) => `<div class="stack" style="gap:4px"><span class="kick">${k}</span><h1 class="h1">${t}</h1></div>`;
+
+  if (aba === 'oficina') {
+    const cps = FASES.slice(0, 4).map(x => {
+      const ok = a.checkpoints.find(c => c.fase === x.id && c.ok);
+      return `<span class="pill c-${x.cor}" ${!ok && x.id !== a.fase ? 'style="opacity:.4"' : ''}>${'F' + x.id} ${ok ? '✓ ' + fmt(ok.d) : x.id === a.fase ? 'próximo' + (S.proximoCheckpoint ? ' · ' + fmt(S.proximoCheckpoint) : '') : '🔒'}</span>`;
+    }).join('');
+    $('#app').innerHTML = `
+      <div class="grid3">
+        <div class="card top-bar c-${f.cor}"><span class="kick">Faixa</span><div class="big" style="color:var(--c)">${f.nome}</div><span class="muted small">Semana ${a.semana} de 48 · ${esc(tituloSemana(a.semana))}</span></div>
+        <div class="card"><span class="kick">Pontos (XP)</span><div class="big">${a.fase < 5 ? xp + ' / ' + meta : xpTotal(a)}</div><span class="muted small">${pc ? 'Top ' + pc.top + '% · ' + pc.pos + 'º de ' + pc.n + ' na faixa' : 'Único Creator nesta faixa'}</span></div>
+        <div class="card"><span class="kick">Checkpoints</span><div class="chips" style="margin-top:8px">${cps}</div></div>
+      </div>${slot3d}`;
+    oficina({ modo: 'creator', ate: a.semana, semana: a.semana, sub: `${a.nome} · abre até a semana ${a.semana}`, titulo: 'O seu robô, semana a semana' });
+    return;
+  }
 
   if (aba === 'missao') {
     const m = missaoAtual(a), feitas = a.feitas[m.id] || [];
@@ -299,13 +338,7 @@ function telaAluno(a, aba) {
   const pts = FASES.map((x, k) => pos(k));
   const trecho = k => { const p = pts[k], q = pts[k + 1], m = (q.x - p.x) * .5; return `M${p.x * LARG / 100} ${p.y} C ${(p.x * LARG / 100) + m * LARG / 100} ${p.y}, ${(q.x * LARG / 100) - m * LARG / 100} ${q.y}, ${q.x * LARG / 100} ${q.y}`; };
   const estado = x => x.id < a.fase ? 'done' : x.id === a.fase ? 'now' : 'lock';
-  const m = missaoAtual(a);
-  const inicio = FASES.filter(x => x.id < a.fase).reduce((t, x) => t + x.aulas, 0);
-  const total = FASES.reduce((t, x) => t + x.aulas, 0);
-  const aulaFase = m && m.aula ? m.aula - inicio : null;
-  const aulaInfo = a.fase < 5 && m && m.aula
-    ? `<div class="aula-atual"><span class="kick">Aula atual</span><b>Aula ${m.aula} de ${total}</b><span class="muted">${aulaFase}ª de ${f.aulas} na ${f.nome} · ${esc(m.titulo)}</span></div>`
-    : `<div class="aula-atual"><span class="kick">Treino atual</span><b>${esc(m ? m.titulo : 'Treino livre')}</b></div>`;
+  const aulaInfo = `<a class="aula-atual" href="${base}/oficina"><span class="kick">${a.fase < 5 ? 'Aula atual' : 'Treino atual'}</span><b>Semana ${a.semana} de 48</b><span class="muted">${a.semana - f.ini + 1}ª de ${f.fim - f.ini + 1} na ${f.nome} · ${esc(tituloSemana(a.semana))}</span><span class="small" style="color:var(--accent)">Ver o robô na Oficina 3D →</span></a>`;
   $('#app').innerHTML = `${head('Minha trilha', f.nome)}
     <div class="card"><div class="mapa-h"><div class="mapa-h-in">
       <svg viewBox="0 0 ${LARG} ${ALT}" aria-hidden="true">${pts.slice(0, -1).map((p, k) =>
@@ -327,7 +360,7 @@ function telaAluno(a, aba) {
       const st = estado(x), tag = st === 'done' ? 'Checkpoint ok' : st === 'now' ? 'Você está aqui' : 'Bloqueada';
       return `<li class="c-${x.cor} ${st} ${x.id === id ? 'sel' : ''}"><button type="button" class="brow" data-f="${x.id}" aria-expanded="${x.id === id}">
         <span class="ln">${x.id < 5 ? 'F' + x.id : 'FP'}</span><b>${esc(x.nome)}</b><span class="muted">${st === 'lock' ? esc(x.titulo) : tag}</span></button>
-        ${x.id === id ? `<div class="bdet"><p>${esc(x.titulo)}${x.aulas ? ' · ' + x.aulas + ' aulas' : ' · sem prazo'}. ${esc(x.resumo)}</p>
+        ${x.id === id ? `<div class="bdet"><p>${esc(x.titulo)}${x.aulas ? ' · semanas ' + x.ini + ' a ' + x.fim : ' · sem prazo'}. ${esc(x.resumo)}</p>
           <p><span class="kick">Checkpoint</span><br>${esc(x.checkpoint)}</p>
           ${st === 'lock' ? '<p class="note">Abre quando você passar no checkpoint da faixa anterior.</p>' : ''}</div>` : ''}</li>`; }).join('')}</ol>`;
     const el = $('#relogio'); if (el) el.textContent = 'Agora ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -348,16 +381,18 @@ function telaPais(a) {
   const aulasMes = a.hist.filter(h => h.a === 'aula' && semanaIdx(h.d) < 4).length;
   const missoesFeitas = Object.values(a.feitas).reduce((t, l) => t + l.length, 0);
   const desafios = a.hist.filter(h => h.a === 'desafio').length;
+  const pc = percentil(a), xp = xpFase(a), meta = META_XP[a.fase];
   const ultimoCp = a.checkpoints.filter(c => c.ok).slice(-1)[0];
   $('#app').innerHTML = `
     <div class="stack" style="gap:4px"><span class="kick">Painel da família</span>
       <h1 class="h1">${esc(a.nome)} está na ${f.nome}${ultimoCp ? `, subiu de faixa em ${fmt(ultimoCp.d)}` : ''}.</h1></div>
     <div class="cols">
       <div class="stack">
-        <div class="grid3">
-          <div class="card"><span class="kick">Aulas no mês</span><div class="big">${aulasMes}</div><span class="muted" style="font-size:13px">de 4 a 5 previstas</span></div>
-          <div class="card"><span class="kick">Desafios</span><div class="big">${desafios}</div><span class="muted" style="font-size:13px">cumpridos no total</span></div>
-          <div class="card"><span class="kick">Sequência</span><div class="big">${sequencia(a)}</div><span class="muted" style="font-size:13px">semanas ativas</span></div>
+        <div class="grid4">
+          <div class="card top-bar c-${f.cor}"><span class="kick">Faixa</span><div class="big" style="color:var(--c)">${f.nome.replace('Faixa ', '')}</div><span class="muted" style="font-size:13px">semana ${a.semana} de 48</span></div>
+          <div class="card"><span class="kick">Pontos (XP)</span><div class="big">${a.fase < 5 ? xp : xpTotal(a)}</div><span class="muted" style="font-size:13px">${a.fase < 5 ? 'de ' + meta + ' na faixa' : 'no total'}</span></div>
+          <div class="card"><span class="kick">Percentil</span><div class="big">${pc ? 'Top ' + pc.top + '%' : '—'}</div><span class="muted" style="font-size:13px">${pc ? pc.pos + 'º de ' + pc.n + ' na mesma faixa' : 'único na faixa'}</span></div>
+          <div class="card"><span class="kick">Presença</span><div class="big">${aulasMes}</div><span class="muted" style="font-size:13px">aulas no mês, de 4 a 5</span></div>
         </div>
         <div class="card"><div class="row"><span class="kick">XP por semana</span><span class="note">últimas 6</span></div>
           <div class="weeks" role="img" aria-label="XP nas últimas 6 semanas: ${sem.join(', ')}">${sem.map((v, i) => `<div><span><i style="height:${Math.round(v / max * 100)}%"></i></span><small>${i === 5 ? 'agora' : v}</small></div>`).join('')}</div>
@@ -371,15 +406,29 @@ function telaPais(a) {
         <div class="card"><span class="kick">Vídeos de ${esc(a.nome)}</span>
           ${a.videos.length ? `<ul class="list" style="margin-top:12px">${a.videos.slice(0, 4).map(v => `<li class="video"><span class="thumb">▶</span><div>${v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener"><b>${esc(v.t)}</b></a>` : `<b>${esc(v.t)}</b>`}<div class="muted" style="font-size:13px">${fmt(v.d)}</div></div></li>`).join('')}</ul>` : '<p class="muted" style="margin-top:8px">Os vídeos das missões aparecem aqui.</p>'}
         </div>
-        <p class="note">${missoesFeitas} tarefas de missão feitas · ${xpTotal(a)} XP no total.</p>
+        <p class="note">${missoesFeitas} tarefas de missão feitas · ${desafios} desafios · ${sequencia(a)} semanas seguidas ativo · ${xpTotal(a)} XP no total.</p>
       </div>
-    </div>`;
+    </div>
+    ${slot3d}`;
+  oficina({ modo: 'pais', ate: a.semana, semana: a.semana, sub: `Semana atual de ${a.nome} · ${a.semana} de 48`, titulo: `O que ${a.nome} está construindo agora` });
 }
 
 /* ---------- professor ---------- */
+const TABS_PROF = [['#/professor', 'Turma'], ['#/professor/aulas', 'Aulas 3D']];
+function telaProfAulas() {
+  setWho(`<span class="name">Professor</span><span class="av" style="color:var(--green)">PR</span>`);
+  setTabs(TABS_PROF, '#/professor/aulas');
+  const marcas = {};
+  S.alunos.forEach(a => (marcas[a.semana] = marcas[a.semana] || []).push(a.nome));
+  const cheia = Object.keys(marcas).sort((x, y) => marcas[y].length - marcas[x].length)[0];
+  const ed = Object.keys(S.aulas).length;
+  $('#app').innerHTML = slot3d;
+  oficina({ modo: 'professor', semana: +cheia || 1, marcas, sub: `${esc(S.turma)} · ${ed ? ed + (ed === 1 ? ' aula editada' : ' aulas editadas') : 'plano oficial, sem edições'}`, titulo: 'Conteúdo das aulas, semana a semana' });
+}
+
 function telaProfessor() {
   setWho(`<span class="name">Professor</span><span class="av" style="color:var(--green)">PR</span>`);
-  setTabs(null);
+  setTabs(TABS_PROF, '#/professor');
   const porFase = FASES.map(f => [f, S.alunos.filter(a => a.fase === f.id)]).filter(([, l]) => l.length);
   $('#app').innerHTML = `
     <div class="stack" style="gap:4px"><span class="kick">Painel da turma</span><h1 class="h1">${esc(S.turma)}</h1></div>
@@ -395,10 +444,10 @@ function telaProfessor() {
       </div>
     </div>
     ${porFase.map(([f, l]) => `
-      <section class="stack"><h2 class="h2">${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· ${l.length} ${l.length === 1 ? 'aluno' : 'alunos'}</span></h2>
+      <section class="stack"><h2 class="h2">${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· ${l.length} ${l.length === 1 ? 'Creator' : 'Creators'}</span></h2>
       <div class="students">${l.map(a => cardAluno(a, f)).join('')}</div></section>`).join('')}
     <form class="card stack" id="novo">
-      <span class="kick">Adicionar aluno</span>
+      <span class="kick">Adicionar Creator</span>
       <div class="grid3"><label>Nome<input type="text" id="nn" required maxlength="40"></label><label>Idade<input type="number" id="ni" min="5" max="17" value="10"></label>
       <label>Faixa<select id="nf">${FASES.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select></label></div>
       <button class="btn btn-fill" type="submit" style="justify-self:start">Adicionar</button>
@@ -413,9 +462,13 @@ function telaProfessor() {
     if (act === 'ok' || act === 'refaz') {
       const de = a.fase; checkpoint(a, act === 'ok');
       toast(act === 'ok' ? `${a.nome} passou! ${'Agora na ' + fase(a.fase).nome + '.'}` : `${a.nome} refaz o checkpoint da ${fase(de).nome}`);
+    } else if (act === 'sem+' || act === 'sem-') {
+      const fx = fase(a.fase);
+      a.semana = Math.max(fx.ini, Math.min(fx.fim, a.semana + (act === 'sem+' ? 1 : -1)));
+      toast(`${a.nome} na semana ${a.semana}`);
     } else if (act === 'del') {
       if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirmar remoção'; return; }
-      S.alunos = S.alunos.filter(x => x !== a); toast('Aluno removido');
+      S.alunos = S.alunos.filter(x => x !== a); toast('Creator removido');
     } else { registrar(a, act); toast(`${a.nome} +${ACOES[act].xp} XP`); }
     save(); render();
   });
@@ -429,7 +482,7 @@ function telaProfessor() {
   $('#novo').onsubmit = e => {
     e.preventDefault(); const nome = $('#nn').value.trim(); if (!nome) return;
     let id = nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || 'aluno'; while (aluno(id)) id += '1';
-    S.alunos.push({ id, nome, idade: +$('#ni').value, fase: +$('#nf').value, hist: [], feitas: {}, videos: [], checkpoints: [], recados: [] });
+    S.alunos.push({ id, nome, idade: +$('#ni').value, fase: +$('#nf').value, semana: fase(+$('#nf').value).ini, hist: [], feitas: {}, videos: [], checkpoints: [], recados: [] });
     save(); toast(`${nome} entrou na turma`); render();
   };
   $('#cpd').onchange = e => { S.proximoCheckpoint = e.target.value; save(); toast('Data do checkpoint salva'); };
@@ -444,7 +497,7 @@ function telaProfessor() {
   };
   $('#rst').onclick = e => {
     if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Apaga tudo? Clique de novo'; return; }
-    S = JSON.parse(JSON.stringify(SEED)); S.alunos.forEach(a => a.hist.forEach(h => { if (!h.f) h.f = a.fase; })); save(); toast('Turma de exemplo restaurada'); render();
+    try { localStorage.removeItem(KEY); } catch (_) {} S = JSON.parse(JSON.stringify(SEED)); save(); S = load(); toast('Turma de exemplo restaurada'); render();
   };
 }
 
@@ -461,11 +514,12 @@ function cardAluno(a, f) {
       ${parado ? '<span class="pill" style="--c:var(--warn)">parado</span>' : xp >= meta && a.fase < 5 ? '<span class="pill" style="--c:var(--green)">pronto p/ checkpoint</span>' : ''}
     </div>
     ${a.fase < 5 ? `<div class="bar"><i style="width:${Math.min(100, xp / meta * 100)}%"></i></div>` : ''}
+    <div class="st-acts" style="align-items:center"><span class="small muted">Semana ${a.semana} de 48 · ${esc(tituloSemana(a.semana))}</span><button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="sem-" aria-label="Voltar uma semana">−</button><button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="sem+" aria-label="Avançar uma semana">+ semana</button></div>
     <div class="st-acts">${acts.map(k => `<button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="${k}">+${ACOES[k].xp} ${ACOES[k].curto}</button>`).join('')}</div>
     ${a.fase < 5 ? `<div class="st-acts"><button class="btn btn-ok btn-sm" data-id="${a.id}" data-act="ok">Checkpoint: passou</button><button class="btn btn-bad btn-sm" data-id="${a.id}" data-act="refaz">Refaz</button></div>` : ''}
     <details><summary>Recado pros pais</summary><form class="stack" data-rec="${a.id}" style="margin-top:8px"><textarea maxlength="400" placeholder="O que ${esc(a.nome)} fez de bom essa semana?"></textarea><button class="btn btn-fill btn-sm" type="submit" style="justify-self:start">Enviar recado</button></form></details>
     <details><summary>Histórico de XP</summary><ul class="hist">${hist.map(([h, i]) => `<li><span>${fmt(h.d)} · ${ACOES[h.a]?.nome || h.a} <span class="num muted">+${xpDe(h)}</span></span><button data-id="${a.id}" data-undo="${i}" aria-label="Desfazer">desfazer</button></li>`).join('') || '<li class="muted">Nada ainda.</li>'}</ul>
-      <button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="del" style="margin-top:8px">Remover aluno</button></details>
+      <button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="del" style="margin-top:8px">Remover Creator</button></details>
   </div>`;
 }
 
