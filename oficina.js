@@ -633,7 +633,7 @@ function renderBelow(){
 }
 function renderTrack(){
   trackEl.querySelectorAll(".o-seg").forEach(s=>{const n=+s.dataset.n,w=aula(n),fora=n>lim.max||n<lim.min;
-    s.classList.toggle("lock",fora);s.disabled=fora;s.classList.toggle("aqui",modo!=="professor"&&n===lim.max);
+    s.classList.toggle("lock",fora);s.disabled=fora;s.classList.toggle("aqui",(modo==="creator"||modo==="pais")&&n===lim.max);
     const quem=marcas[n]||[];if(quem.length)s.dataset.qtd=quem.length;else delete s.dataset.qtd;
     s.setAttribute("aria-label",`Semana ${n}: ${w.aula}${fora?" (bloqueada)":""}${quem.length?" · "+quem.join(", "):""}`);
     s.title=`Sem. ${n} · ${w.aula}${fora?" · abre quando você chegar lá":""}${quem.length?"\nCreators aqui: "+quem.join(", "):""}`});
@@ -656,7 +656,7 @@ function midiaHTML(){
       <label>Ou foto do computador<input id="oMf" type="file" accept="image/*"></label>
       <div class="o-btns"><button class="o-btn fill" type="submit">Adicionar exemplo</button></div>
       <span class="o-xpnote">Vídeo vai por link. Foto do computador fica salva neste navegador.</span></form>`
-    :lista.length?"":`<span class="o-xpnote">O professor coloca aqui vídeos e fotos de competições de verdade.</span>`}</div>`;
+    :lista.length?"":`<span class="o-xpnote">Aqui entram vídeos e fotos de competições de verdade.</span>`}</div>`;
 }
 function fotoReduzida(file){return new Promise((ok,erro)=>{const img=new Image();img.onload=()=>{const s=Math.min(1,1280/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);ok(c.toDataURL("image/jpeg",.8))};img.onerror=erro;img.src=URL.createObjectURL(file)})}
 
@@ -685,7 +685,7 @@ function renderUI(n,st,entering){
   const modal=$("#oModal");modal.hidden=!st.fp;R.classList.toggle("o-fp",!!st.fp);modal.querySelectorAll("[data-fp]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.fp===fpModo));
   const tipo={exame:"exame de faixa · 100 XP",rec:"recuperação",cer:"cerimônia de faixa",aula:"aula ao vivo · 1h"}[w.tipo];
   const kitNote=n===4?`<span class="o-tag hot">encomendar Kit Iniciante</span>`:n===9?`<span class="o-tag hot">Kit Iniciante chega</span>`:n===21?`<span class="o-tag hot">Kit Avançado chega</span>`:"";
-  const aqui=modo!=="professor"&&n===lim.max?`<span class="o-tag hot">${modo==="pais"?"semana atual":"você está aqui"}</span>`:"";
+  const aqui=(modo==="creator"||modo==="pais")&&n===lim.max?`<span class="o-tag hot">${modo==="pais"?"semana atual":"você está aqui"}</span>`:"";
   const uniq=[...new Set(st.parts)];const antes=n>1?stageFor(n-1):null;const newSet=new Set(antes&&antes.mode===st.mode?st.parts.filter(k=>!antes.parts.includes(k)):[]);
   const daFaixa=W0.filter(v=>v.f===w.f).map(v=>aula(v.n));
   const maxXP=w.f==="preta"?null:daFaixa.reduce((s,v)=>s+xpDe(v).total,0);
@@ -752,7 +752,7 @@ $("#oLoading").remove();
              titulo, sub, marcas: {semana: [nomes]}, host: {aula(n), salvarAula(n, patch|null), midia(), addMidia(m), delMidia(i)} } */
 export function montar(slot,op){
   host=op.host;modo=op.modo||"professor";marcas=op.marcas||{};editando=false;
-  lim=modo==="professor"?{min:1,max:48}:modo==="pais"?{min:op.ate,max:op.ate}:{min:1,max:op.ate};
+  lim=modo==="professor"||modo==="publico"?{min:1,max:48}:modo==="pais"?{min:op.ate,max:op.ate}:{min:1,max:op.ate};
   R.classList.toggle("o-so1",lim.min===lim.max);
   $("#oEyebrow").textContent=op.sub||"Plano de aulas · 48 semanas";$("#oTitle").textContent=op.titulo||"O robô do Creator, semana a semana";
   playBtn.setAttribute("aria-label",modo==="creator"?"Tocar as semanas até onde você está":"Tocar o ano inteiro");
@@ -761,5 +761,6 @@ export function montar(slot,op){
   curStage=null;cur=0;goWeek(op.semana||lim.max,{recenter:true});
   renderer.setAnimationLoop(frame);
 }
+export function retomar(){if(R.isConnected){renderer.setAnimationLoop(frame);if(actionTl)actionTl.resume()}}
 export function pausar(){stopPlay();renderer.setAnimationLoop(null);if(actionTl)actionTl.pause()}
 window.__eron={goWeek,parts,robot,camera,state,vitimas,get cur(){return cur},get fpModo(){return fpModo}};

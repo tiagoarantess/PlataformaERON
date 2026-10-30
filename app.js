@@ -98,7 +98,6 @@ const oficinaHost = {
   delMidia: i => { S.midiaComp.splice(i, 1); save(); }
 };
 function oficina(op) {
-  document.body.classList.add('of-wide');
   const slot = $('#ofslot');
   (OF ? Promise.resolve(OF) : import('./oficina.js').then(m => (OF = m)))
     .then(m => { if (slot.isConnected) m.montar(slot, Object.assign({ host: oficinaHost }, op)); })
@@ -163,7 +162,11 @@ function telaLogin() {
   setWho(''); setTabs(null);
   const P = PAPEIS[papelLogin];
   let vi = 0;
-  $('#app').innerHTML = `
+  if (!$('#lbox')) {
+    $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="O robô do Creator, semana a semana">${slot3d}</section>`;
+    oficina({ modo: 'publico', semana: 12, sub: 'Plano de aulas · 48 semanas', titulo: 'O robô do Creator, semana a semana' });
+  } else if (OF) OF.retomar();
+  $('#lbox').innerHTML = `
   <div class="login">
     <section class="login-hero">
       <span class="kick live"><i></i>Estação ERON · plataforma do Creator</span>
@@ -226,7 +229,7 @@ function telaLogin() {
 function telaAluno(a, aba) {
   const base = `#/aluno/${a.id}`;
   setWho(`<span class="name">${esc(a.nome)}</span><span class="av">${iniciais(a.nome)}</span>`);
-  setTabs([[base + '/trilha', 'Trilha'], [base + '/oficina', 'Oficina 3D'], [base + '/missao', 'Missão'], [base + '/turma', 'Turma'], [base + '/portfolio', 'Portfólio']], base + '/' + aba);
+  setTabs([[base + '/trilha', 'Trilha'], [base + '/missao', 'Missão'], [base + '/turma', 'Turma'], [base + '/portfolio', 'Portfólio']], base + '/' + aba);
   const f = fase(a.fase);
   const meta = META_XP[a.fase], xp = xpFase(a), pc = percentil(a), seq = sequencia(a);
   const resumo = `
@@ -241,21 +244,6 @@ function telaAluno(a, aba) {
       </div>
     </div>`;
   const head = (k, t) => `<div class="stack" style="gap:4px"><span class="kick">${k}</span><h1 class="h1">${t}</h1></div>`;
-
-  if (aba === 'oficina') {
-    const cps = FASES.slice(0, 4).map(x => {
-      const ok = a.checkpoints.find(c => c.fase === x.id && c.ok);
-      return `<span class="pill c-${x.cor}" ${!ok && x.id !== a.fase ? 'style="opacity:.4"' : ''}>${'F' + x.id} ${ok ? '✓ ' + fmt(ok.d) : x.id === a.fase ? 'próximo' + (S.proximoCheckpoint ? ' · ' + fmt(S.proximoCheckpoint) : '') : '🔒'}</span>`;
-    }).join('');
-    $('#app').innerHTML = `
-      <div class="grid3">
-        <div class="card top-bar c-${f.cor}"><span class="kick">Faixa</span><div class="big" style="color:var(--c)">${f.nome}</div><span class="muted small">Semana ${a.semana} de 48 · ${esc(tituloSemana(a.semana))}</span></div>
-        <div class="card"><span class="kick">Pontos (XP)</span><div class="big">${a.fase < 5 ? xp + ' / ' + meta : xpTotal(a)}</div><span class="muted small">${pc ? 'Top ' + pc.top + '% · ' + pc.pos + 'º de ' + pc.n + ' na faixa' : 'Único Creator nesta faixa'}</span></div>
-        <div class="card"><span class="kick">Checkpoints</span><div class="chips" style="margin-top:8px">${cps}</div></div>
-      </div>${slot3d}`;
-    oficina({ modo: 'creator', ate: a.semana, semana: a.semana, sub: `${a.nome} · abre até a semana ${a.semana}`, titulo: 'O seu robô, semana a semana' });
-    return;
-  }
 
   if (aba === 'missao') {
     const m = missaoAtual(a), feitas = a.feitas[m.id] || [];
@@ -338,7 +326,7 @@ function telaAluno(a, aba) {
   const pts = FASES.map((x, k) => pos(k));
   const trecho = k => { const p = pts[k], q = pts[k + 1], m = (q.x - p.x) * .5; return `M${p.x * LARG / 100} ${p.y} C ${(p.x * LARG / 100) + m * LARG / 100} ${p.y}, ${(q.x * LARG / 100) - m * LARG / 100} ${q.y}, ${q.x * LARG / 100} ${q.y}`; };
   const estado = x => x.id < a.fase ? 'done' : x.id === a.fase ? 'now' : 'lock';
-  const aulaInfo = `<a class="aula-atual" href="${base}/oficina"><span class="kick">${a.fase < 5 ? 'Aula atual' : 'Treino atual'}</span><b>Semana ${a.semana} de 48</b><span class="muted">${a.semana - f.ini + 1}ª de ${f.fim - f.ini + 1} na ${f.nome} · ${esc(tituloSemana(a.semana))}</span><span class="small" style="color:var(--accent)">Ver o robô na Oficina 3D →</span></a>`;
+  const aulaInfo = `<div class="aula-atual"><span class="kick">${a.fase < 5 ? 'Aula atual' : 'Treino atual'}</span><b>Semana ${a.semana} de 48</b><span class="muted">${a.semana - f.ini + 1}ª de ${f.fim - f.ini + 1} na ${f.nome} · ${esc(tituloSemana(a.semana))}</span></div>`;
   $('#app').innerHTML = `${head('Minha trilha', f.nome)}
     <div class="card"><div class="mapa-h"><div class="mapa-h-in">
       <svg viewBox="0 0 ${LARG} ${ALT}" aria-hidden="true">${pts.slice(0, -1).map((p, k) =>
@@ -409,21 +397,63 @@ function telaPais(a) {
         <p class="note">${missoesFeitas} tarefas de missão feitas · ${desafios} desafios · ${sequencia(a)} semanas seguidas ativo · ${xpTotal(a)} XP no total.</p>
       </div>
     </div>
-    ${slot3d}`;
-  oficina({ modo: 'pais', ate: a.semana, semana: a.semana, sub: `Semana atual de ${a.nome} · ${a.semana} de 48`, titulo: `O que ${a.nome} está construindo agora` });
+`;
 }
 
 /* ---------- professor ---------- */
-const TABS_PROF = [['#/professor', 'Turma'], ['#/professor/aulas', 'Aulas 3D']];
+const TABS_PROF = [['#/professor', 'Turma'], ['#/professor/aulas', 'Aulas']];
+/* XP padrão de cada semana, igual ao da Oficina 3D (oficina.js) */
+function xpPadrao(n) {
+  const tipo = PLANO[n - 1][5], it = [['Aula', 10]];
+  if (tipo === 'exame') it.push(['Exame', 100]); else it.push(['Desafio', 20], ['Documentar', 15], ['Fim de semana', 10]);
+  if (n >= 9) it.push(['Foto do kit', 10]);
+  return it;
+}
 function telaProfAulas() {
   setWho(`<span class="name">Professor</span><span class="av" style="color:var(--green)">PR</span>`);
   setTabs(TABS_PROF, '#/professor/aulas');
-  const marcas = {};
-  S.alunos.forEach(a => (marcas[a.semana] = marcas[a.semana] || []).push(a.nome));
-  const cheia = Object.keys(marcas).sort((x, y) => marcas[y].length - marcas[x].length)[0];
-  const ed = Object.keys(S.aulas).length;
-  $('#app').innerHTML = slot3d;
-  oficina({ modo: 'professor', semana: +cheia || 1, marcas, sub: `${esc(S.turma)} · ${ed ? ed + (ed === 1 ? ' aula editada' : ' aulas editadas') : 'plano oficial, sem edições'}`, titulo: 'Conteúdo das aulas, semana a semana' });
+  const quem = {};
+  S.alunos.forEach(a => (quem[a.semana] = quem[a.semana] || []).push(a.nome));
+  const linha = n => {
+    const base = PLANO[n - 1], ed = S.aulas[n] || {}, v = k => ed[k] ?? base[{ aula: 1, sabe: 2, desafio: 3, mat: 4 }[k]] ?? '';
+    const xp = xpPadrao(n).map(([k, x]) => [k, ed.xp && ed.xp[k] != null ? ed.xp[k] : x]);
+    return `<details class="aula-ed"${S.aulas[n] ? ' data-ed' : ''}><summary><span class="num muted">Sem. ${n}</span><b>${esc(v('aula'))}</b>${S.aulas[n] ? '<span class="pill" style="--c:var(--warn)">editada</span>' : ''}${quem[n] ? `<span class="pill">${quem[n].map(esc).join(', ')}</span>` : ''}</summary>
+      <form class="stack" data-aula="${n}" style="margin-top:10px">
+        <label>Nome da aula<input name="aula" value="${esc(v('aula'))}" maxlength="60" required></label>
+        <label>${base[5] === 'exame' ? 'O que o Creator mostra ao vivo' : 'O Creator sai sabendo'}<textarea name="sabe" maxlength="300">${esc(v('sabe'))}</textarea></label>
+        <label>Desafio da semana<textarea name="desafio" maxlength="300">${esc(v('desafio'))}</textarea></label>
+        <label>Material<input name="mat" value="${esc(v('mat'))}" maxlength="160"></label>
+        <div class="grid3">${xp.map(([k, x]) => `<label>XP ${esc(k)}<input type="number" name="xp:${esc(k)}" value="${x}" min="0" max="500" step="5"></label>`).join('')}</div>
+        <div class="row" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn btn-fill btn-sm" type="submit">Salvar aula</button>${S.aulas[n] ? `<button class="btn btn-ghost btn-sm" type="button" data-orig="${n}">Voltar ao plano original</button>` : ''}</div>
+      </form></details>`;
+  };
+  const midia = S.midiaComp.map((m, i) => `<li class="row"><span>${m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener"><b>${esc(m.titulo)}</b></a>` : `<b>${esc(m.titulo)}</b> <span class="muted small">foto</span>`}</span><button class="btn btn-ghost btn-sm" data-delm="${i}">remover</button></li>`).join('');
+  $('#app').innerHTML = `
+    <div class="stack" style="gap:4px"><span class="kick">Plano de 48 semanas</span><h1 class="h1">Conteúdo das aulas</h1>
+      <p class="muted">O que você muda aqui aparece no robô semana a semana da página de entrada. Fica salvo neste navegador.</p></div>
+    ${FASES.map(f => `<section class="card top-bar c-${f.cor} stack"><h2 class="h2">${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· semanas ${f.ini} a ${f.fim}</span></h2>
+      ${Array.from({ length: f.fim - f.ini + 1 }, (_, k) => linha(f.ini + k)).join('')}
+      ${f.id === 5 ? `<div class="stack" style="margin-top:8px"><span class="kick">Exemplos reais da competição</span>
+        ${midia ? `<ul class="list">${midia}</ul>` : '<p class="muted small">Nenhum ainda. Aparecem na Faixa Preta do robô semana a semana.</p>'}
+        <form class="stack" id="fmid"><div class="grid2"><label>Título<input id="mt" maxlength="80" required placeholder="Ex.: etapa regional, modalidade resgate"></label>
+          <label>Link do vídeo ou foto<input id="mu" type="url" placeholder="https://"></label></div>
+          <label>Ou foto do computador<input id="mf" type="file" accept="image/*"></label>
+          <button class="btn btn-fill btn-sm" type="submit" style="justify-self:start">Adicionar exemplo</button></form></div>` : ''}
+    </section>`).join('')}`;
+  document.querySelectorAll('form[data-aula]').forEach(fm => fm.onsubmit = e => {
+    e.preventDefault(); const p = { xp: {} };
+    for (const [k, v] of new FormData(fm).entries()) { if (k.startsWith('xp:')) p.xp[k.slice(3)] = Math.max(0, +v || 0); else p[k] = String(v).trim(); }
+    S.aulas[fm.dataset.aula] = p; save(); toast('Aula salva'); render();
+  });
+  document.querySelectorAll('[data-orig]').forEach(b => b.onclick = () => { delete S.aulas[b.dataset.orig]; save(); toast('Aula voltou ao plano original'); render(); });
+  document.querySelectorAll('[data-delm]').forEach(b => b.onclick = () => { S.midiaComp.splice(+b.dataset.delm, 1); save(); render(); });
+  $('#fmid').onsubmit = async e => {
+    e.preventDefault(); const titulo = $('#mt').value.trim(), url = $('#mu').value.trim(), file = $('#mf').files[0];
+    if (!url && !file) return toast('Cole um link ou escolha uma foto.');
+    let data = null;
+    if (file) data = await new Promise(ok => { const img = new Image(); img.onload = () => { const k = Math.min(1, 1280 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', .8)); }; img.onerror = () => ok(null); img.src = URL.createObjectURL(file); });
+    oficinaHost.addMidia({ titulo, url: data ? '' : url, data }); render();
+  };
 }
 
 function telaProfessor() {

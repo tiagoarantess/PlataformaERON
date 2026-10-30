@@ -20,16 +20,16 @@ Pra testar no computador, é só abrir o `index.html` no navegador.
 | `styles.css` | Visual, o mesmo do site Criadores do Futuro. |
 | `data.js` | Regras do método: fases, checkpoints, tabela de XP, meta por fase, missões e a turma de exemplo. **É aqui que se mexe no conteúdo.** |
 | `app.js` | As telas e a lógica (percentil, sequência, conquistas, checkpoint). |
-| `oficina.js` / `oficina.css` | Oficina 3D (Three.js + GSAP pelo CDN). Só carrega quando alguém abre uma tela com 3D. |
+| `oficina.js` / `oficina.css` | Robô semana a semana em 3D (Three.js + GSAP pelo CDN), na página de entrada. |
 | `logo-eron.png` | Logo usado no adesivo do chassi e da caixa no 3D. |
 
 ## Telas
 
 - `#/entrar` tela de entrada: comparação online x presencial (um par por vez) e login (aluno, pais ou professor). Os benefícios do flyer ficam na landing page.
 - `#/aluno/ID/trilha` (trilha horizontal com as 5 faixas; embaixo, pontos (XP), aula atual e checkpoint, ao lado, o quadro "Faixas da trilha" F1 a FP; toque numa faixa pra ver o checkpoint dela), `/missao` (tarefas, envio do vídeo, conquista mais próxima), `/turma`, `/portfolio`: telas do aluno.
-- `#/aluno/ID/oficina`: Oficina 3D do Creator, liberada até a semana em que ele está (`semana` de cada Creator), com faixa, XP, percentil e checkpoints.
-- `#/pais/ID`: painel da família (faixa, XP, percentil, presença) e a semana atual do filho em 3D.
-- `#/professor/aulas`: as 48 semanas em 3D; o professor edita nome, conteúdo, desafio, material e XP de cada aula (fica em `S.aulas`, por cima do `PLANO` de `data.js`) e sobe exemplos reais da competição na Faixa Preta.
+- `#/entrar` também mostra, rolando pra baixo depois dos diferenciais, o robô do Creator semana a semana em 3D (as 48 semanas, aberto pra quem visita).
+- `#/pais/ID`: painel da família (faixa, XP, percentil, presença).
+- `#/professor/aulas`: o professor edita nome, conteúdo, desafio, material e XP de cada uma das 48 aulas (fica em `S.aulas`, por cima do `PLANO` de `data.js`) e sobe exemplos reais da competição. O 3D da entrada mostra a versão editada.
 - Faixa Preta no 3D: pista de linha e arena de resgate são cenas separadas (botões na própria cena). Modelos 3D são ilustrativos.
 - `#/professor`: registrar aula, dar XP, aprovar checkpoint, mandar recado, adicionar aluno, exportar e importar a turma.
 
