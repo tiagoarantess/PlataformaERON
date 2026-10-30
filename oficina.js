@@ -10,7 +10,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 /* ================= DADOS DO PLANO (oficial 22/10, em data.js) ================= */
 const F = {
   amarela:{nome:"F1 Amarela",short:"Amarela",ini:1,fim:8,cor:"#F5C542",exame:"Motor DC girando e mudando de velocidade no simulador",sai:"motor girando no Tinkercad, sem kit nenhum"},
-  verde:{nome:"F2 Verde",short:"Verde",ini:9,fim:20,cor:"#3DDC84",exame:"Robô segue a linha da pista inteira sozinho",sai:"robô que anda e segue linha"},
+  verde:{nome:"F2 Verde",short:"Verde",ini:9,fim:20,cor:"#3DDC84",exame:"Robô segue um círculo de linha sozinho; o Creator calcula a volta com 2 · π · r",sai:"robô que anda e segue linha"},
   azul:{nome:"F3 Azul",short:"Azul",ini:21,fim:33,cor:"#4DB2FF",exame:"Para na parede, desvia do obstáculo e obedece o marcador verde",sai:"robô que para, desvia e lê o verde da pista da OBR"},
   roxa:{nome:"F4 Roxa",short:"Roxa",ini:34,fim:44,cor:"#A970FF",exame:"Acha a bolinha, pega com a garra e leva até a área segura",sai:"robô de resgate com garra 3D"},
   preta:{nome:"FP Preta",short:"Preta",ini:45,fim:48,cor:"#E8E8EE",exame:"Sem exame: Influencer treina pra competição",sai:"Influencer competindo e puxando os novos"}
@@ -48,8 +48,8 @@ const PART_INFO = {
   battery:["Suporte + 2 baterias 18650","Energia do robô: 7,4 V."],
   wiresR:["Fiação do robô","Liga placa, ponte H, motores e sensores."],
   hcsr04:["Sensor ultrassônico","Os olhos: mede a distância até o obstáculo."],
-  line:["Seguidor de linha 5 canais","Enxerga a fita preta no chão."],
-  color:["Sensor de cor TCS34725","Lê vermelho, verde e azul dos sinais."],
+  line:["2 sensores de linha (infravermelho)","Um de cada lado da linha: enxergam preto e branco."],
+  color:["2 sensores de cor (TCS34725 ou similar)","Substituem os de linha: seguem o preto e leem o marcador verde. Modelo final depende da loja."],
   servo:["Servo SG90","Motor de ângulo: abre e fecha a garra."],
   claw:["Garra impressa em 3D","Pega e solta a bolinha."],
   ball:["Bolinha de resgate","O alvo da missão."],
@@ -60,9 +60,7 @@ const PART_INFO = {
 const BENCH1=["uno","proto","wiresB"];
 const ROBOT_BASE=["chassis","motors","wheels","caster"];
 const ROBOT_POWER=[...ROBOT_BASE,"uno","l298n","battery","wiresR"];
-/* Faixa Preta: pista e sala de resgate são cenas separadas, como na OBR (a sala fica no fim da pista, com entrada própria). */
-let fpModo="linha";
-const fpPadrao=n=>n===46?"linha":"resgate";
+/* Faixa Preta: uma pista só, com duas áreas, como na OBR: a área de linha termina na fita prata e o robô entra na sala de resgate. */
 function stageFor(n){
   if(n<=5){const p=[...BENCH1,"led1"]; if(n>=2)p.push("led2","led3"); if(n>=3)p.push("button"); if(n>=4)p.push("buzzer"); if(n>=5)p.push("ldr");
     return {mode:"bench",env:"sim",holo:true,parts:p,action:["blink","semaforo","button","buzzer","ldr"][n-1],cam:"bench",
@@ -80,11 +78,13 @@ function stageFor(n){
   /* Verde termina seguindo linha (infravermelho) */
   const RL=[...ROBOT_POWER,"line"];
   if(n<=16) return {mode:"robot",env:"track",parts:RL,action:"lineIdle",cam:"track",badge:"sensor de linha",
-      look:n===15?"O seguidor de linha entra embaixo da frente: preto absorve, branco reflete.":"Os 5 canais viram a posição da linha: o robô sabe onde ela está."};
+      look:n===15?"Dois sensores de linha entram embaixo da frente: preto absorve, branco reflete.":"Os 2 sensores leem a linha: esquerdo no preto, vira pra esquerda; direito no preto, vira pra direita."};
   if(n<=18) return {mode:"robot",env:"track",parts:RL,action:"follow",cam:"track",badge:"segue linha",
       look:n===17?"Liga-desliga: o robô segue a linha, ainda tremendo.":"Controle proporcional: faz as curvas sem serpentear."};
-  if(n<=20) return {mode:"robot",env:"compLinha",parts:RL,action:"compLinha",cam:"compLinha",badge:n===19?"exame de faixa":"volta cronometrada",
-      look:n===19?"Exame: o robô segue a linha da pista inteira sozinho.":"Recuperação, ou volta cronometrada pra bater o próprio tempo."};
+  if(n===19) return {mode:"robot",env:"circulo",parts:RL,action:"circulo",cam:"circulo",badge:"exame de faixa",
+      look:"Exame: o robô segue o círculo sozinho. Raio de 30 cm: uma volta são 2 · π · r, uns 188 cm. O Creator mede o tempo e calcula a velocidade."};
+  if(n===20) return {mode:"robot",env:"compLinha",parts:RL,action:"compLinha",cam:"compLinha",badge:"volta cronometrada",
+      look:"Recuperação, ou volta cronometrada pra bater o próprio tempo."};
   /* Azul: ultrassônico primeiro, depois o sensor de cor lendo o marcador verde da OBR */
   const R2=[...RL,"hcsr04"];
   if(n===21) return {mode:"robot",env:"floor",parts:R2,action:"ping",cam:"robot",badge:"Kit Avançado",look:"O ultrassônico entra na frente e mede a distância em cm."};
@@ -92,11 +92,15 @@ function stageFor(n){
       look:n===22?"Anda pra frente e para antes da parede: a primeira decisão do robô.":"Anda, vê a parede, para, recua e gira."};
   if(n<=26) return {mode:"robot",env:"track",obstacle:true,parts:R2,action:n===24?"obstStop":"detour",cam:"track",badge:"obstáculo",
       look:n===24?"Segue a linha e para quando o ultrassônico vê a caixa.":n===25?"Uma caixa no caminho: contorna e volta pra linha.":"Máquina de estados: SEGUINDO, DESVIANDO, PROCURANDO, PARADO."};
-  const R3=[...R2,"color"];
-  if(n<=28) return {mode:"robot",env:"obr",parts:R3,action:"colorIdle",cam:"obr",badge:"sensor de cor",
-      look:n===27?"O sensor de cor olha pro chão: o infravermelho só vê claro e escuro, ele lê o verde.":"Calibrar: separar verde, preto e branco do marcador."};
-  if(n<=33) return {mode:"robot",env:"obr",parts:R3,action:"obr",cam:"obr",badge:n===32?"exame de faixa":"pista OBR",
-      look:n===29?"Marcador verde antes da interseção: vira pro lado dele. Sem verde, segue reto.":n===30?"Dois verdes é beco sem saída: o robô volta por onde veio.":n===32?"Exame: obedece o verde, passa o gap e desvia do obstáculo.":"Pista no modelo da OBR: interseção com verde, gap na linha e obstáculo."};
+  /* da sem. 27 em diante os 2 sensores de cor substituem os de linha infravermelho: eles seguem a linha e leem o verde */
+  const R3=[...R2.filter(k=>k!=="line"),"color"];
+  if(n<=28) return {mode:"robot",env:"obr_verde",parts:R3,action:"colorIdle",cam:"obr",badge:"sensor de cor",
+      look:n===27?"Os 2 sensores de cor entram no lugar dos infravermelhos: o infravermelho só vê claro e escuro, o de cor também lê o verde.":"Calibrar: separar verde, preto e branco do marcador."};
+  if(n<=33){const k={29:"verde",30:"beco",31:"tudo",32:"exame",33:"lombada"}[n];
+    return {mode:"robot",env:"obr_"+k,pista:k,parts:R3,action:"pista",cam:"obr",badge:n===32?"exame de faixa":"pista OBR",
+      look:{verde:"Marcador verde antes da interseção: vira pro lado dele. Sem verde, segue reto.",beco:"Dois verdes é beco sem saída: o robô dá meia-volta e procura o próximo verde.",
+        tudo:"Juntar tudo: verde, gap na linha e obstáculo na mesma pista.",exame:"Exame: pista nova, com dois verdes, obstáculo e gap. O Creator não vê a pista antes.",
+        lombada:"Recuperação, ou pista com lombada e gap: o robô não pode perder a linha no tranco."}[k]};}
   const R5=[...R3,"servo"];
   if(n===34) return {mode:"robot",env:"floor",parts:R5,action:"servo",cam:"robot",badge:"servo",look:"O servo SG90 varre de 0 a 180 graus com pausas."};
   if(n===35) return {mode:"robot",env:"floor",parts:[...R5,"claw"],action:"claw",cam:"robot",badge:"garra 3D",look:"O servo abre e fecha a garra impressa em 3D por comando."};
@@ -108,11 +112,11 @@ function stageFor(n){
   if(n===45) return {mode:"robot",env:"cer",parts:FP,action:"cer",cam:"cer",badge:"Faixa Preta",fp:false,
       look:"Cerimônia: o Creator vira Influencer, com os pais assistindo."};
   const lead=n===48?"O Influencer apresenta o robô pros pais e planeja o ano 2. ":n===47?"Mini-torneio interno, rodadas cronometradas. ":"Treino no padrão do regulamento, cronômetro e equipe com Capitão. ";
-  if(fpModo==="linha") return {mode:"robot",env:"obr",parts:FP,action:"obr",fast:true,crono:true,cam:"obr",badge:"pista OBR",fp:true,
-      look:lead+"A pista no modelo da OBR, contra o relógio: marcador verde, gap e obstáculo. A sala de resgate é outra cena."};
+  if(n===46) return {mode:"robot",env:"compResgate",parts:FP,action:"final",resgate:false,cam:"pistaFinal",badge:"área de linha",fp:true,
+      look:lead+"Pista no modelo da OBR, contra o relógio: verde, gap e obstáculo até a fita prata, que é a entrada da sala de resgate."};
   const morta=n===48;
-  return {mode:"robot",env:"compResgate",parts:FP,action:"compResgate",morta,cam:"sala",badge:"sala de resgate",fp:true,
-    look:lead+(morta?"Sala de resgate completa: as 2 vítimas prateadas (vivas) vão pra área verde e a preta (morta) vai pra área vermelha.":"Sala de resgate: o robô acha a vítima prateada (viva), pega com a garra, carrega e solta na área verde.")};
+  return {mode:"robot",env:"compResgate",parts:FP,action:"final",resgate:true,morta,cam:"pistaFinal",badge:"linha + resgate",fp:true,
+    look:lead+"Uma pista, duas áreas: o robô termina a área de linha, passa a fita prata e entra na sala. "+(morta?"Lá as 2 vítimas prateadas (vivas) vão pra área verde e a preta (morta) vai pra área vermelha.":"Lá ele acha as 2 vítimas prateadas (vivas), pega com a garra e leva pra área verde.")};
 }
 
 /* ================= DOM ================= */
@@ -132,9 +136,6 @@ R.innerHTML=`
         </div>
         <div class="o-hint">arraste pra girar · pinça ou roda pra zoom · toque numa peça</div>
         <div class="o-tools">
-          <div class="o-modal" id="oModal" role="group" aria-label="Modalidade da competição" hidden>
-            <button class="o-tool" data-fp="linha" aria-pressed="false">Pista OBR</button><button class="o-tool" data-fp="resgate" aria-pressed="false">Sala de resgate</button>
-          </div>
           <button class="o-tool" id="oExplode" aria-pressed="false">Explodir peças</button>
           <button class="o-tool" id="oSpin" aria-pressed="false">Girar sozinho</button>
           <button class="o-tool" id="oCam">Recentrar</button>
@@ -261,17 +262,25 @@ const builders={
     [-.12,.12].forEach(z=>{const c=C(.08,.08,.12,eye,.075,0,z,28);c.rotation.z=-Math.PI/2;g.add(c);const m=C(.066,.066,.01,mesh_,.137,0,z,24);m.rotation.z=-Math.PI/2;g.add(m)});
     g.add(B(.05,.04,.1,std(0x15151a),-.02,-.13,0));g.position.set(0,0,0);
     const brk=B(.16,.02,.2,std(0x8a8f99,{metalness:.7}),-.08,-.12,0);g.add(brk);return g},
-  line(){const g=new THREE.Group();g.add(B(.14,.018,.72,std(0x16161b),0,0,0));
-    const s=std(0x2a3550),l=std(0xFF4040,{emissive:0xFF2020,emissiveIntensity:2});for(let i=0;i<5;i++){g.add(B(.05,.03,.06,s,0,-.02,-.28+i*.14));g.add(B(.016,.01,.016,l,.04,.012,-.28+i*.14))}
-    g.add(B(.03,.2,.05,std(0x8a8f99,{metalness:.7}),-.05,.11,.3),B(.03,.2,.05,std(0x8a8f99,{metalness:.7}),-.05,.11,-.3));return g},
-  color(){const g=new THREE.Group();g.add(B(.2,.016,.2,std(0x3B3FA8),0,0,0));const led=B(.04,.02,.04,std(0xffffff,{emissive:0xffffff,emissiveIntensity:3}),0,-.016,0);g.add(led);
-    const gl=glow(0xffffff,.4);gl.material.opacity=.8;gl.position.y=-.05;g.add(gl);g.add(B(.03,.22,.04,std(0x8a8f99,{metalness:.7}),-.07,.11,0));return g},
+  line(){const g=new THREE.Group();const met=std(0x8a8f99,{metalness:.7});g.add(B(.06,.018,.5,met,-.04,.02,0));
+    /* 2 módulos, um de cada lado da linha */
+    const pcb=std(0x1E5AA8,{roughness:.45}),s=std(0x15151a),l=std(0xFF4040,{emissive:0xFF2020,emissiveIntensity:2});
+    [-.13,.13].forEach(z=>{g.add(B(.16,.016,.09,pcb,.02,0,z),B(.04,.03,.06,s,.07,-.022,z),B(.014,.01,.014,l,-.03,.012,z))});
+    g.add(B(.03,.2,.05,met,-.05,.11,.22),B(.03,.2,.05,met,-.05,.11,-.22));return g},
+  color(){const g=new THREE.Group();const met=std(0x8a8f99,{metalness:.7});g.add(B(.06,.018,.5,met,-.06,.02,0));
+    /* 2 sensores de cor, um de cada lado da linha (TCS34725 ou similar) */
+    [-.13,.13].forEach(z=>{g.add(B(.14,.016,.14,std(0x3B3FA8),0,0,z),B(.035,.02,.035,std(0xffffff,{emissive:0xffffff,emissiveIntensity:3}),0,-.016,z));
+      const gl=glow(0xffffff,.3);gl.material.opacity=.8;gl.position.set(0,-.05,z);g.add(gl)});
+    g.add(B(.03,.22,.04,met,-.07,.11,.22),B(.03,.22,.04,met,-.07,.11,-.22));return g},
   servo(){const g=new THREE.Group();const blue=std(0x2E7BD6,{roughness:.45});g.add(B(.23,.22,.12,blue,0,.11,0),B(.32,.02,.12,blue,0,.17,0),C(.035,.035,.04,std(0xe9e9ee),.05,.24,0,16));
     const horn=new THREE.Group();horn.name="horn";horn.position.set(.05,.265,0);horn.add(B(.18,.015,.035,std(0xf2f2f5),.06,0,0));g.add(horn);return g},
   claw(){const g=new THREE.Group();const pla=std(0xA970FF,{roughness:.5});
     g.add(B(.05,.32,.46,pla,0,0,0),B(.22,.04,.2,pla,-.1,.15,0));
     [1,-1].forEach(s=>{const piv=new THREE.Group();piv.name=s>0?"fL":"fR";piv.position.set(.04,-.02,s*.2);
-      const f=B(.32,.05,.04,pla,.16,-.08,0);f.rotation.z=-.4;piv.add(f);const tip=B(.06,.12,.04,pla,.3,-.17,s*-.02);piv.add(tip);g.add(piv)});return g},
+      const f=B(.32,.05,.04,pla,.16,-.08,0);f.rotation.z=-.4;piv.add(f);const tip=B(.06,.12,.04,pla,.3,-.17,s*-.02);piv.add(tip);g.add(piv)});
+    /* alavanca da garra: a haste do servo puxa e empurra, os dedos abrem e fecham */
+    const lev=new THREE.Group();lev.name="lev";lev.position.set(-.1,.19,0);lev.add(B(.03,.06,.16,std(0x2c2c34),0,.02,0));g.add(lev);
+    const rod=mesh(new THREE.CylinderGeometry(.012,.012,1,8),std(0xC9CED6,{metalness:.85,roughness:.3}));rod.name="rod";rod.position.set(-.2,.3,-.15);rod.scale.y=.3;rod.rotation.x=1;g.add(rod);return g},
   ball(){const g=new THREE.Group();g.add(mesh(new THREE.SphereGeometry(.2,32,20),std(0xFF7A1A,{roughness:.35})));return g},
   box(){const g=new THREE.Group();const clear=new THREE.MeshPhysicalMaterial({color:0xbfe3ff,roughness:.1,transparent:true,opacity:.28,depthWrite:false});
     g.add(B(1.8,.04,1.2,std(0x1c2433),0,.02,0));
@@ -298,7 +307,7 @@ function makeWheel(){const g=new THREE.Group();const spin=new THREE.Group();spin
 const POSE={
   bench:{uno:[-.62,0,0],proto:[.45,0,0],wiresB:[0,0,0],led1:[.37,.08,-.1],led2:[.5,.08,-.1],led3:[.63,.08,-.1],button:[.4,.098,.16],buzzer:[.62,.08,.15],ldr:[.25,.08,.05],motorDC:[.45,.1,.6,0]},
   robot:{chassis:[0,0,0],motors:[0,0,0],wheels:[0,0,0],caster:[0,0,0],uno:[-.55,.42,0,0],l298n:[.2,.42,-.24],battery:[.25,.17,0],wiresR:[0,0,0],
-    hcsr04:[1.0,.58,0],line:[.95,.06,0],color:[.62,.05,.24],servo:[.6,.42,.3,0],claw:[1.12,.24,0],ball:[1.45,.2,0]},
+    hcsr04:[1.0,.58,0],line:[.95,.06,0],color:[.62,.05,.24],servo:[.74,.42,-.3,0],claw:[1.12,.24,0],ball:[1.45,.2,0]},
 };
 /* onde a bolinha fica quando a garra fecha (coordenadas do robô) */
 const GARRA=new THREE.Vector3(1.45,.2,0),ALCANCE=1.45;
@@ -348,7 +357,7 @@ function linhaTex(curve,W_,H_,lw=30,extra){return canvasTex(1472,896,(c,w,h)=>{c
   const obst=B(.6,.6,.6,std(0xB98A55,{roughness:.9}),0,.3,0);obst.name="obst";const p=TRACK.getPointAt(OBST_T);obst.position.set(p.x,.3,p.z);g.add(obst);
   const signs=new THREE.Group();signs.name="signs";SIGNS.forEach(([t,col])=>{const q=TRACK.getPointAt(t);const tg=TRACK.getTangentAt(t);const s=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshStandardMaterial({color:col,roughness:.8}));s.rotation.x=-Math.PI/2;s.rotation.z=Math.atan2(tg.z,tg.x)*-1;s.position.set(q.x,.006,q.z);s.receiveShadow=true;signs.add(s)});g.add(signs);
 }
-/* arena da Faixa Roxa (plano: segue a linha até a área de resgate, sem. 38) */
+/* arena da Faixa Roxa: sala de resgate sem linha (na OBR, linha e resgate são áreas diferentes) */
 const ARENA={start:new THREE.Vector3(-2.7,0,1.5),ball:new THREE.Vector3(1.0,0,-.9),area:new THREE.Vector3(2.6,0,1.6)};
 { const g=envGroup("arena");
   g.add((()=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(7.4,5),new THREE.MeshStandardMaterial({color:0xD9C29A,roughness:.9}));m.rotation.x=-Math.PI/2;m.position.y=.003;m.receiveShadow=true;return m})());
@@ -356,8 +365,6 @@ const ARENA={start:new THREE.Vector3(-2.7,0,1.5),ball:new THREE.Vector3(1.0,0,-.
   const area=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(0,0),new THREE.Vector2(-1.6,0),new THREE.Vector2(0,1.6)])),new THREE.MeshStandardMaterial({color:0x2fbf62,roughness:.8}));
   area.rotation.x=-Math.PI/2;area.position.set(3.68,.006,2.48);g.add(area);
   const st=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshStandardMaterial({color:0x4DB2FF,roughness:.8,transparent:true,opacity:.5}));st.rotation.x=-Math.PI/2;st.position.set(-2.9,.005,1.7);g.add(st);
-  const lt=canvasTex(1184,800,(c,w,h)=>{c.strokeStyle="#111";c.lineWidth=22;c.lineCap="round";c.beginPath();const P=(x,z)=>[(x/7.4+.5)*w,(z/5+.5)*h];c.moveTo(...P(-2.9,1.7));c.bezierCurveTo(...P(-2.9,-.8),...P(-.6,-1.6),...P(1,-1.6));c.bezierCurveTo(...P(2.6,-1.6),...P(3.0,0),...P(3.1,1.9));c.stroke()});
-  const line=new THREE.Mesh(new THREE.PlaneGeometry(7.4,5),new THREE.MeshBasicMaterial({map:lt,transparent:true}));line.rotation.x=-Math.PI/2;line.position.y=.0045;g.add(line);
 }
 /* ---- Faixa Preta ---- */
 function trofeu(){const gold=std(0xE8B84A,{metalness:1,roughness:.25});const tr=new THREE.Group();tr.name="trophy";
@@ -381,50 +388,95 @@ const LINHA_FP=new THREE.CatmullRomCurve3([[-3.4,0,1.6],[-3.6,0,-.6],[-2.6,0,-2.
   const borda=std(0x23232c,{roughness:.9});g.add(B(W_,.12,.06,borda,0,.06,-H_/2),B(W_,.12,.06,borda,0,.06,H_/2),B(.06,.12,H_,borda,-W_/2,.06,0),B(.06,.12,H_,borda,W_/2,.06,0));
   spots(g,[[-3.6,-2.4],[3.6,-2.4]]);
 }
-/* Pista no modelo da OBR (manual 2024): linha preta em piso branco, interseção com marcador verde (vira pro lado do verde),
-   cruzamento sem verde (segue reto), gap (linha interrompida), obstáculo pra desviar e faixa vermelha de chegada. */
+/* Pistas no modelo da OBR (manual 2024): linha preta em piso branco; marcador verde antes da interseção = vira pro lado do verde;
+   dois verdes = beco sem saída (meia-volta); sem verde = segue reto; gap = linha interrompida; obstáculo pra desviar; lombada; faixa vermelha de chegada.
+   Uma pista diferente por semana na Azul. Coordenadas no tabuleiro de 8,6 x 5,4 (centro em 0,0). */
 const OBR_W=8.6,OBR_H=5.4;
-const OBR_LINHA=[[-3.4,1.8],[-3.4,-1.6],[3.4,-1.6],[3.4,1.8],[-3.4,1.8]];
-const OBR_OBST=new THREE.Vector3(3.4,0,.15),OBR_VERDE=[-3.22,-1.28],OBR_GAP=[-.55,-.05];
-function tPerto(curve,x,z){let best=0,bd=1e9;for(let i=0;i<=600;i++){const p=curve.getPointAt(i/600),d=(p.x-x)**2+(p.z-z)**2;if(d<bd){bd=d;best=i/600}}return best}
-const OBR_PATH=(()=>{const P=[[-3.4,1.2],[-3.4,-1.0],[-3.4,-1.45],[-3.3,-1.58],[-3.0,-1.6],[1.4,-1.6],[3.0,-1.6],[3.3,-1.58],[3.4,-1.45],[3.4,-.95],[3.45,-.6],[4.05,-.25],[4.1,.15],[4.05,.55],[3.45,.9],[3.4,1.25],[3.4,1.45],[3.3,1.78],[3.0,1.8],[-3.0,1.8],[-3.3,1.78],[-3.4,1.6]];
-  return new THREE.CatmullRomCurve3(P.map(([x,z])=>new THREE.Vector3(x,0,z)),true,"centripetal")})();
-{ const g=envGroup("obr");
-  const px=x=>(x/OBR_W+.5)*1472,pz=z=>(z/OBR_H+.5)*924,u=1472/OBR_W;
-  const tex=canvasTex(1472,924,(c,w,h)=>{c.fillStyle="#F5F5F2";c.fillRect(0,0,w,h);
-    c.strokeStyle="rgba(0,0,0,.06)";c.lineWidth=2;for(let x=-OBR_W/2;x<=OBR_W/2;x+=.85){c.beginPath();c.moveTo(px(x),0);c.lineTo(px(x),h);c.stroke()}for(let z=-OBR_H/2;z<=OBR_H/2;z+=.85){c.beginPath();c.moveTo(0,pz(z));c.lineTo(w,pz(z));c.stroke()}
-    c.strokeStyle="#0c0c0e";c.lineWidth=.13*u;c.lineJoin="miter";c.lineCap="butt";c.beginPath();OBR_LINHA.forEach(([x,z],i)=>i?c.lineTo(px(x),pz(z)):c.moveTo(px(x),pz(z)));c.stroke();
-    c.beginPath();c.moveTo(px(-3.4),pz(-1.6));c.lineTo(px(-3.4),pz(-2.45));c.stroke();           // interseção em T: a linha também segue reto
-    c.beginPath();c.moveTo(px(1.4),pz(-2.4));c.lineTo(px(1.4),pz(-.8));c.stroke();             // cruzamento sem verde: segue reto
-    c.fillStyle="#F5F5F2";c.fillRect(px(OBR_GAP[0]),pz(-1.6)-.1*u,(OBR_GAP[1]-OBR_GAP[0])*u,.2*u); // gap
-    c.fillStyle="#1FA64A";c.fillRect(px(OBR_VERDE[0])-.12*u,pz(OBR_VERDE[1])-.12*u,.24*u,.24*u);  // marcador verde
-    c.fillStyle="#E02424";c.fillRect(px(-1.2)-.06*u,pz(1.8)-.32*u,.12*u,.64*u);                   // chegada
-    c.fillStyle="#3a3a44";c.font="600 22px JetBrains Mono, monospace";
-    c.fillText("PISTA NO MODELO DA OBR",px(-2.9),pz(-2.25));c.fillText("VERDE: VIRA",px(-3.0),pz(-1.05));c.fillText("SEM VERDE: RETO",px(1.55),pz(-.85));c.fillText("GAP",px(-.42),pz(-1.85));c.fillText("CHEGADA",px(-1.55),pz(2.3));c.fillText("LARGADA",px(-3.3),pz(2.3))});
-  const pl=new THREE.Mesh(new THREE.PlaneGeometry(OBR_W,OBR_H),new THREE.MeshStandardMaterial({map:tex,roughness:.85}));pl.rotation.x=-Math.PI/2;pl.position.y=.003;pl.receiveShadow=true;g.add(pl);
-  const ob=B(.55,.75,.55,std(0xB98A55,{roughness:.9}),OBR_OBST.x,.375,OBR_OBST.z);g.add(ob);
-  const borda=std(0x23232c,{roughness:.9});g.add(B(OBR_W,.12,.06,borda,0,.06,-OBR_H/2),B(OBR_W,.12,.06,borda,0,.06,OBR_H/2),B(.06,.12,OBR_H,borda,-OBR_W/2,.06,0),B(.06,.12,OBR_H,borda,OBR_W/2,.06,0));
+function tPerto(curve,x,z){let best=0,bd=1e9;for(let i=0;i<=800;i++){const p=curve.getPointAt(i/800),d=(p.x-x)**2+(p.z-z)**2;if(d<bd){bd=d;best=i/800}}return best}
+/* arredonda as quinas longas da trilha do robô (as curtas, de desvio e meia-volta, ficam como estão) */
+function arred(P,r=.35){const out=[P[0]];for(let i=1;i<P.length-1;i++){const [a,b,c]=[P[i-1],P[i],P[i+1]];const l1=Math.hypot(b[0]-a[0],b[1]-a[1]),l2=Math.hypot(c[0]-b[0],c[1]-b[1]);
+  const ang=Math.abs(Math.atan2((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]),(b[0]-a[0])*(c[0]-b[0])+(b[1]-a[1])*(c[1]-b[1])));
+  if(l1<.8||l2<.8||ang<1){out.push(b);continue}
+  out.push([b[0]-(b[0]-a[0])/l1*r,b[1]-(b[1]-a[1])/l1*r],[b[0]+(c[0]-b[0])/l2*r*.15+(a[0]-b[0])/l1*r*.15,b[1]+(c[1]-b[1])/l2*r*.15+(a[1]-b[1])/l1*r*.15],[b[0]+(c[0]-b[0])/l2*r,b[1]+(c[1]-b[1])/l2*r])}
+  out.push(P[P.length-1]);return out}
+const PISTAS={
+  verde:{nome:"MARCADOR VERDE",linha:[[-4.3,-1.8],[1.5,-1.8],[1.5,1.8],[3.6,1.8]],extras:[[[1.5,-1.8],[3.0,-1.8]],[[1.5,1.8],[1.5,2.6]],[[.8,0],[2.2,0]]],
+    verdes:[[1.22,-1.55],[1.75,1.52]],chegada:[3.3,1.8,"v"],rot:[["VERDE: VIRA",.3,-1.2],["SEM VERDE: RETO",1.8,-.25],["VERDE: VIRA",1.95,1.2]],
+    robo:[[-4.0,-1.8],[1.5,-1.8],[1.5,1.8],[3.3,1.8]],ev:[[1.22,-1.8,"cor"],[1.5,0,"cruz"],[1.5,1.52,"cor"]]},
+  beco:{nome:"BECO SEM SAÍDA",linha:[[-4.3,0],[2.0,0]],extras:[[[2.0,-1.5],[2.0,1.5]],[[-1.0,0],[-1.0,1.8]],[[-1.0,1.8],[3.6,1.8]]],
+    verdes:[[1.72,-.27],[1.72,.27],[-.72,.27]],chegada:[3.3,1.8,"v"],rot:[["DOIS VERDES: MEIA-VOLTA",.2,-.9],["VERDE: VIRA",-.4,.75]],
+    robo:[[-4.0,0],[1.55,0],[1.8,-.2],[1.98,.05],[1.78,.3],[1.4,.12],[1.0,.02],[-1.0,0],[-1.0,1.8],[3.3,1.8]],ev:[[1.6,0,"cor"],[-.72,.02,"cor"]]},
+  tudo:{nome:"JUNTAR TUDO",linha:[[-4.3,-1.8],[3.4,-1.8],[3.4,1.8],[-3.6,1.8]],extras:[[[3.4,-1.8],[4.1,-1.8]]],verdes:[[3.12,-1.55]],gaps:[[-1.0,-1.8,-.5,-1.8]],obst:[3.4,.2],
+    chegada:[-3.2,1.8,"v"],rot:[["VERDE: VIRA",2.0,-1.25],["GAP",-1.0,-2.2],["OBSTÁCULO",2.05,.95]],
+    robo:[[-4.0,-1.8],[3.4,-1.8],[3.4,-.7],[3.35,-.4],[2.75,-.05],[2.6,.25],[2.75,.55],[3.35,.85],[3.4,1.1],[3.4,1.8],[-3.2,1.8]],ev:[[3.12,-1.8,"cor"],[-.75,-1.8,"gap"],[3.4,-1.0,"us"]]},
+  exame:{nome:"EXAME DA AZUL",linha:[[-4.3,-1.6],[-1.2,-1.6],[-1.2,1.6],[1.4,1.6],[1.4,-1.6],[3.6,-1.6]],extras:[[[-1.2,-1.6],[0,-1.6]],[[1.4,1.6],[2.4,1.6]]],
+    verdes:[[-1.48,-1.33],[1.12,1.33]],gaps:[[1.4,-.2,1.4,.3]],obst:[-1.2,0],chegada:[3.2,-1.6,"v"],rot:[["VERDE",-2.6,-1.05],["OBSTÁCULO",-3.2,.6],["GAP",1.6,.05],["VERDE",.2,1.05]],
+    robo:[[-4.0,-1.6],[-1.2,-1.6],[-1.2,-.8],[-1.25,-.5],[-1.85,-.15],[-2.0,.15],[-1.85,.45],[-1.25,.75],[-1.2,1.0],[-1.2,1.6],[1.4,1.6],[1.4,-1.6],[3.2,-1.6]],
+    ev:[[-1.48,-1.6,"cor"],[-1.2,-1.05,"us"],[1.12,1.6,"cor"],[1.4,.05,"gap"]]},
+  lombada:{nome:"LOMBADA E GAP",linha:[[-4.3,-1.8],[1.5,-1.8],[1.5,1.8],[3.6,1.8]],extras:[[[1.5,-1.8],[3.0,-1.8]]],verdes:[[1.22,-1.55]],gaps:[[1.5,.5,1.5,1.0]],lomb:[[-2.6,-1.8],[-1.0,-1.8]],
+    chegada:[3.3,1.8,"v"],rot:[["LOMBADA",-2.9,-2.25],["VERDE: VIRA",.3,-1.2],["GAP",1.7,.75]],robo:[[-4.0,-1.8],[1.5,-1.8],[1.5,1.8],[3.3,1.8]],ev:[[1.22,-1.8,"cor"],[1.5,.75,"gap"]]},
+  /* Faixa Preta: a área de linha termina na entrada da sala de resgate (mesma pista, duas áreas) */
+  final:{nome:"ÁREA DE LINHA",linha:[[-4.3,-1.9],[3.4,-1.9],[3.4,0],[-3.4,0],[-3.4,1.9],[4.3,1.9]],extras:[[[3.4,-1.9],[4.1,-1.9]],[[0,-.6],[0,.6]]],verdes:[[3.12,-1.62]],
+    gaps:[[1.4,0,1.9,0]],obst:[-1.8,0],rot:[["VERDE: VIRA",2.0,-1.35],["SEM VERDE: RETO",-.9,-.75],["GAP",1.4,-.4],["OBSTÁCULO",-2.3,-.6],["→ SALA DE RESGATE",1.6,2.35]],
+    robo:[[-4.0,-1.9],[3.4,-1.9],[3.4,0],[-1.0,0],[-1.25,.05],[-1.5,.55],[-1.8,.85],[-2.1,.55],[-2.35,.05],[-2.6,0],[-3.4,0],[-3.4,1.9],[5.4,1.9]],
+    ev:[[3.12,-1.9,"cor"],[1.65,0,"gap"],[0,0,"cruz"],[-.7,0,"us"],[4.45,1.9,"prata"]]}
+};
+/* desenha a pista num grupo e devolve a trilha do robô (em coordenadas do mundo) */
+function montaPista(g,P,off=[0,0]){
+  const W=1472,H=924,u=W/OBR_W,px=x=>(x/OBR_W+.5)*W,pz=z=>(z/OBR_H+.5)*H;
+  const tex=canvasTex(W,H,(c)=>{c.fillStyle="#F5F5F2";c.fillRect(0,0,W,H);
+    c.strokeStyle="rgba(0,0,0,.06)";c.lineWidth=2;for(let x=-OBR_W/2;x<=OBR_W/2;x+=.85){c.beginPath();c.moveTo(px(x),0);c.lineTo(px(x),H);c.stroke()}for(let z=-OBR_H/2;z<=OBR_H/2;z+=.85){c.beginPath();c.moveTo(0,pz(z));c.lineTo(W,pz(z));c.stroke()}
+    c.strokeStyle="#0c0c0e";c.lineWidth=.13*u;c.lineJoin="miter";c.lineCap="square";
+    const linha=L=>{c.beginPath();L.forEach(([x,z],i)=>i?c.lineTo(px(x),pz(z)):c.moveTo(px(x),pz(z)));c.stroke()};
+    linha(P.linha);(P.extras||[]).forEach(linha);
+    c.fillStyle="#F5F5F2";(P.gaps||[]).forEach(([x1,z1,x2,z2])=>{const h=x1===x2;c.fillRect(h?px(x1)-.1*u:px(x1),h?pz(z1):pz(z1)-.1*u,h?.2*u:(x2-x1)*u,h?(z2-z1)*u:.2*u)});
+    c.fillStyle="#1FA64A";(P.verdes||[]).forEach(([x,z])=>c.fillRect(px(x)-.12*u,pz(z)-.12*u,.24*u,.24*u));
+    if(P.chegada){const [x,z,o]=P.chegada;c.fillStyle="#E02424";o==="v"?c.fillRect(px(x)-.06*u,pz(z)-.32*u,.12*u,.64*u):c.fillRect(px(x)-.32*u,pz(z)-.06*u,.64*u,.12*u)}
+    c.fillStyle="#3a3a44";c.font="600 22px JetBrains Mono, monospace";c.fillText("PISTA OBR · "+P.nome,px(-4.1),pz(-2.4));
+    (P.rot||[]).forEach(([t,x,z])=>c.fillText(t,px(x),pz(z)));if(P.chegada)c.fillText("CHEGADA",px(P.chegada[0])-40,pz(P.chegada[1])+.55*u)});
+  const sub=new THREE.Group();sub.position.set(off[0],0,off[1]);g.add(sub);
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(OBR_W,OBR_H),new THREE.MeshStandardMaterial({map:tex,roughness:.85}));pl.rotation.x=-Math.PI/2;pl.position.y=.003;pl.receiveShadow=true;sub.add(pl);
+  if(P.obst)sub.add(B(.55,.75,.55,std(0xB98A55,{roughness:.9}),P.obst[0],.375,P.obst[1]));
+  (P.lomb||[]).forEach(([x,z])=>sub.add(B(.12,.06,.5,std(0xf4f4f4,{roughness:.7}),x,.03,z)));
+  const borda=std(0x23232c,{roughness:.9});sub.add(B(OBR_W,.12,.06,borda,0,.06,-OBR_H/2),B(.06,.12,OBR_H,borda,-OBR_W/2,.06,0),B(OBR_W,.12,.06,borda,0,.06,OBR_H/2));
+  if(!P.linha.some(([x])=>x>=4.3))sub.add(B(.06,.12,OBR_H,borda,OBR_W/2,.06,0));
+  const curva=new THREE.CatmullRomCurve3(arred(P.robo).map(([x,z])=>new THREE.Vector3(x+off[0],0,z+off[1])),false,"centripetal");
+  return {curva,ev:(P.ev||[]).map(([x,z,k])=>[tPerto(curva,x+off[0],z+off[1]),k]),lomb:(P.lomb||[]).map(([x,z])=>[x+off[0],z+off[1]])};
 }
-/* sem. 46-48, modalidade resgate: arena própria, SEM linha. Bolinhas soltas, área de resgate no canto. */
-/* sala maior que a arena da Roxa: na OBR a sala tem 120 x 90 cm e o robô cabe folgado */
-const RESG={start:new THREE.Vector3(-4.4,0,3.0),vit:[new THREE.Vector3(-1.5,.2,-1.8),new THREE.Vector3(1.6,.2,.3),new THREE.Vector3(-3.4,.2,-1.4)],solta:[new THREE.Vector3(4.75,.2,3.35),new THREE.Vector3(4.2,.2,3.55),new THREE.Vector3(4.65,.2,-3.3)]};
+const pistas={};
+["verde","beco","tudo","exame","lombada"].forEach(k=>{pistas[k]=montaPista(envGroup("obr_"+k),PISTAS[k])});
+/* sem. 19: exame em círculo (raio e 2·π·r) */
+const CIRC_R=3.0,CIRCULO=new THREE.CatmullRomCurve3(Array.from({length:48},(_,i)=>{const a=i/48*Math.PI*2;return new THREE.Vector3(Math.cos(a)*CIRC_R,0,Math.sin(a)*CIRC_R)}),true);
+{ const g=envGroup("circulo");const S=7.6,px=v=>(v/S+.5)*1024;
+  const tex=canvasTex(1024,1024,(c)=>{c.fillStyle="#F5F5F2";c.fillRect(0,0,1024,1024);c.strokeStyle="#0c0c0e";c.lineWidth=22;c.beginPath();c.arc(512,512,CIRC_R/S*1024,0,Math.PI*2);c.stroke();
+    c.setLineDash([14,10]);c.strokeStyle="#4DB2FF";c.lineWidth=6;c.beginPath();c.moveTo(512,512);c.lineTo(px(CIRC_R),512);c.stroke();c.setLineDash([]);c.fillStyle="#4DB2FF";c.beginPath();c.arc(512,512,9,0,7);c.fill();
+    c.fillStyle="#1d5f99";c.font="700 34px JetBrains Mono, monospace";c.fillText("r = 30 cm",560,495);c.fillStyle="#3a3a44";c.font="600 30px JetBrains Mono, monospace";
+    c.fillText("UMA VOLTA = 2 · π · r ≈ 188 cm",270,600);c.fillText("EXAME DA VERDE · SEGUIR O CÍRCULO",210,90)});
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(S,S),new THREE.MeshStandardMaterial({map:tex,roughness:.85}));pl.rotation.x=-Math.PI/2;pl.position.y=.003;pl.receiveShadow=true;g.add(pl);
+}
+
+/* sem. 46-48: a área de linha (à esquerda) termina na fita prata; a sala de resgate (à direita) não tem linha.
+   sala maior que a arena da Roxa: na OBR a sala tem 120 x 90 cm e o robô cabe folgado */
+const RESG={start:new THREE.Vector3(-4.4,0,2.8),vit:[new THREE.Vector3(-1.5,.2,-1.8),new THREE.Vector3(1.6,.2,.3),new THREE.Vector3(-3.4,.2,-1.4)],solta:[new THREE.Vector3(4.75,.2,3.35),new THREE.Vector3(4.2,.2,3.55),new THREE.Vector3(4.65,.2,-3.3)]};
 const vitimas=[];
 /* caminhos da sala de resgate (pontos por onde o robô passa antes de mirar a bolinha / a área) */
 /* calculados por simulação pra garra nunca passar por cima de outra bolinha */
 const WP={v0:[[1.0,2.0]],a0:[[0,.5]],v1:[[3.0,1.5]],a1:[],v2:[],a2:[]};
 { const g=envGroup("compResgate");const SW=11,SH=8,T=2.3;
   const piso=new THREE.Mesh(new THREE.PlaneGeometry(SW,SH),new THREE.MeshStandardMaterial({color:0xEDEDED,roughness:.9}));piso.rotation.x=-Math.PI/2;piso.position.y=.003;piso.receiveShadow=true;g.add(piso);
-  const wm=std(0x23232c,{roughness:.9});g.add(B(SW,.4,.06,wm,0,.2,-SH/2),B(SW,.4,.06,wm,0,.2,SH/2),B(.06,.4,SH,wm,-SW/2,.2,0),B(.06,.4,SH,wm,SW/2,.2,0));
+  /* parede esquerda com a abertura da entrada (z de 2,1 a 3,5) */
+  const wm=std(0x23232c,{roughness:.9});g.add(B(SW,.4,.06,wm,0,.2,-SH/2),B(SW,.4,.06,wm,0,.2,SH/2),B(.06,.4,6.1,wm,-SW/2,.2,-.95),B(.06,.4,.5,wm,-SW/2,.2,3.75),B(.06,.4,SH,wm,SW/2,.2,0));
   const tri=(sz,col,x,z,nome)=>{const m=new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape([new THREE.Vector2(0,0),new THREE.Vector2(-T,0),new THREE.Vector2(0,sz*T)])),new THREE.MeshStandardMaterial({color:col,roughness:.8,side:THREE.DoubleSide}));
     m.rotation.x=-Math.PI/2;m.position.set(x,.006,z);if(nome)m.name=nome;g.add(m)};
   tri(1,0x2fbf62,SW/2-.03,SH/2-.03);tri(-1,0xD93434,SW/2-.03,-SH/2+.03,"areaVermelha");
-  const prata=new THREE.Mesh(new THREE.PlaneGeometry(1.6,.18),std(0xC9CED6,{metalness:.8,roughness:.25}));prata.rotation.x=-Math.PI/2;prata.position.set(-4.4,.006,3.75);g.add(prata);
-  floorLabel(g,"ENTRADA (FITA PRATA)",-4.4,3.45,1.9,"#55555f");
+  const prata=new THREE.Mesh(new THREE.PlaneGeometry(1.6,.18),std(0xC9CED6,{metalness:.8,roughness:.25}));prata.rotation.x=-Math.PI/2;prata.rotation.z=Math.PI/2;prata.position.set(-5.3,.006,2.8);g.add(prata);
+  floorLabel(g,"ENTRADA (FITA PRATA)",-4.1,3.75,1.9,"#55555f");
   floorLabel(g,"SALA DE RESGATE · SEM LINHA",-2.6,-3.5,3,"#33333d");floorLabel(g,"ÁREA VERDE: VIVAS",3.4,1.55,2,"#1d7a3d");
   const lv=floorLabel(g,"ÁREA VERMELHA: MORTA",3.3,-1.45,2.2,"#a11d1d");lv.name="lblVermelha";
   RESG.vit.forEach((v,i)=>{const b=mesh(new THREE.SphereGeometry(.2,32,20),i<2?std(0xD9DEE6,{metalness:.45,roughness:.28}):std(0x141418,{roughness:.6}),v.x,v.y,v.z);g.add(b);vitimas.push(b)});
   spots(g,[[-5,-3.5],[5,-3.5]]);
 }
+const pistaFinal=montaPista(envs.compResgate,PISTAS.final,[-9.8,.9]);
 
 /* ================= ESTADO + ANIMAÇÃO (GSAP) ================= */
 let cur=0,curStage=null,actionTl=null,exploded=false,selected=null;
@@ -448,7 +500,8 @@ function layoutPositions(keys){
     items.forEach(i=>{i.p.position.set(x-i.b.min.x,-i.b.min.y,z+depth/2-(i.b.min.z+i.b.max.z)/2);x+=i.w+gap[ri];i.p.userData.base=i.p.position.clone()});z+=depth+.4});
 }
 const CAMS={bench:[[1.25,1.05,1.45],[0,.06,.1]],layout:[[0,5.6,4.6],[0,0,-.1]],robot:[[2.5,1.7,2.6],[0,.35,0]],floor:[[-1,3.6,5.6],[.6,.3,0]],track:[[0,7.2,6.6],[0,0,0]],arena:[[0,6.8,6.4],[0,0,0]],
-  cer:[[4.4,3.1,5.2],[0,.8,0]],compLinha:[[0,7.4,6.4],[0,0,0]],obr:[[0,7.6,6.6],[0,0,0]],sala:[[0,10.5,9.8],[0,0,.3]]};
+  cer:[[4.4,3.1,5.2],[0,.8,0]],compLinha:[[0,7.4,6.4],[0,0,0]],obr:[[0,7.6,6.6],[0,0,0]],circulo:[[0,8.4,7.4],[0,0,.2]],
+  pistaFinal:[[-8.6,8.2,8.2],[-8.6,0,.9]],sala:[[0,10.5,9.8],[0,0,.3]]};
 function flyCam(name,dur=1.1){
   const [p,t]=CAMS[name];const narrow=vp.clientWidth/vp.clientHeight<1;const f=narrow?1.55:1;
   const tp=new THREE.Vector3(...t),pp=new THREE.Vector3(...p).sub(tp).multiplyScalar(f).add(tp);
@@ -474,14 +527,20 @@ function resetActionState(){
   $("#oCrono").hidden=true;
 }
 function setLed(k,v){const d=parts[k].children[0].userData.led;d.mat.emissiveIntensity=.15+v*3.2;d.gl.material.opacity=v*.9}
-function setClaw(open){const l=parts.claw.getObjectByName("fL"),r=parts.claw.getObjectByName("fR");l.rotation.y=-open*.5;r.rotation.y=open*.5}
+const _a=new THREE.Vector3(),_b=new THREE.Vector3(),_up=new THREE.Vector3(0,1,0);
+function setClaw(open){const c=parts.claw,l=c.getObjectByName("fL"),r=c.getObjectByName("fR");l.rotation.y=-open*.5;r.rotation.y=open*.5;
+  /* o servo gira e a haste liga a ponta do braço dele na alavanca da garra */
+  const sv=parts.servo,h=sv.getObjectByName("horn"),lev=c.getObjectByName("lev"),rod=c.getObjectByName("rod");
+  lev.rotation.y=open*.6;
+  if(exploded||!sv.visible||!c.visible||sv.parent!==c.parent){rod.visible=false;return}
+  h.rotation.y=.9-open*1.2;rod.visible=true;robot.updateMatrixWorld(true);
+  h.localToWorld(_a.set(.15,0,0));c.worldToLocal(_a);lev.localToWorld(_b.set(0,.04,.07));c.worldToLocal(_b);
+  const d=_b.clone().sub(_a);rod.position.copy(_a).addScaledVector(d,.5);rod.scale.y=d.length();rod.quaternion.setFromUnitVectors(_up,d.normalize())}
 
 /* limites de navegação por perfil */
 let lim={min:1,max:48};
 function goWeek(n,opts={}){
   n=Math.max(lim.min,Math.min(lim.max,n));
-  if(n!==cur&&!opts.fp)fpModo=fpPadrao(n);
-  if(opts.fp)fpModo=opts.fp;
   const st=stageFor(n),prev=curStage;cur=n;
   const modeChanged=!prev||prev.mode!==st.mode;
   const prevSet=new Set(prev?prev.parts:[]),nextSet=new Set(st.parts);
@@ -508,6 +567,7 @@ function goWeek(n,opts={}){
     gsap.from(p.position,{y:p.userData.base.y+(modeChanged?.6:1.1),duration:.7,delay:d+.15,ease:"power3.out"});
   });
   st.parts.forEach(k=>parts[k].visible=true);
+  setClaw(.5);
   if(st.mode==="layout"){const lid=parts.box.getObjectByName("lid");gsap.fromTo(lid.rotation,{x:0},{x:-1.9,duration:REDUCED?0:1,delay:.3,ease:"power3.out"})}
   if(modeChanged||!prev||prev.cam!==st.cam||opts.recenter)flyCam(st.cam);
   curStage=st;
@@ -588,28 +648,39 @@ function startAction(st,delay){
     P.vai(-2.7,-.4);P.pega(ball,new THREE.Vector3(v.x,.2,v.z));P.vai(1.3,.5);P.solta(ball,new THREE.Vector3(3.1,.2,2.0));
     tl.to({},{duration:.8}).to(ball.scale,{x:.001,y:.001,z:.001,duration:.3,ease:"power2.in"})}
   else if(a==="obstStop"){const h=parts.hcsr04;tl.add(driveCurve(TRACK,robot,4.2,{from:.02,to:OBST_T-.075,ease:"power1.out"})).call(()=>ping(h)).to({},{duration:.4}).call(()=>ping(h)).to({},{duration:1.4})}
-  else if(a==="colorIdle"){const tt=tPerto(OBR_PATH,-3.4,-.95);const p=OBR_PATH.getPointAt(tt),tg=OBR_PATH.getTangentAt(tt);robot.position.set(p.x,0,p.z);robot.rotation.y=-Math.atan2(tg.z,tg.x);
-    tl.call(()=>ping(parts.color,"y",0x1FA64A)).to({},{duration:1.1})}
-  else if(a==="obr"){/* segue a linha; o sensor de cor vê o verde e o robô vira; passa o gap; desvia do obstáculo */
-    const s={t:0},lap=st.fast?13:20;if(st.crono)$("#oCrono").hidden=false;let volta=0;
-    const marcas=[[tPerto(OBR_PATH,-3.4,-1.15),()=>ping(parts.color,"y",0x1FA64A)],[tPerto(OBR_PATH,-.9,-1.6),()=>ping(parts.line,"y",0xF5C542)],[tPerto(OBR_PATH,.9,-1.6),()=>ping(parts.line,"y",0xffffff)],[tPerto(OBR_PATH,3.4,-1.2),()=>ping(parts.hcsr04)]];let feitas=new Set();
-    tl.call(()=>{s.t=0;volta++;feitas=new Set()}).to(s,{t:1,duration:lap,ease:"none",onUpdate:()=>{const t=s.t%1,p=OBR_PATH.getPointAt(t),tg=OBR_PATH.getTangentAt(t);robot.position.set(p.x,0,p.z);robot.rotation.y=-Math.atan2(tg.z,tg.x);
-      marcas.forEach(([m,f],i)=>{if(s.t>=m&&!feitas.has(i)){feitas.add(i);f()}});if(st.crono)crono(s.t*lap,volta)}}).to({},{duration:.8})}
+  else if(a==="colorIdle"){const c=pistas.verde.curva,tt=tPerto(c,1.0,-1.8);const p=c.getPointAt(tt),tg=c.getTangentAt(tt);robot.position.set(p.x,0,p.z);robot.rotation.y=-Math.atan2(tg.z,tg.x);
+    tl.call(()=>ping(parts.color,"y",0x1FA64A)).to({},{duration:.7}).call(()=>ping(parts.color,"y",0x0c0c0e)).to({},{duration:.7}).call(()=>ping(parts.color,"y",0xffffff)).to({},{duration:1})}
+  else if(a==="pista"){seguePista(tl,pistas[st.pista],{verde:11,beco:12,tudo:16,exame:17,lombada:11}[st.pista]);tl.to({},{duration:1})}
+  else if(a==="circulo"){/* exame da Verde: uma volta no círculo, o raio aparece no chão */
+    const s={t:0};tl.call(()=>ping(parts.line,"y",0x4DB2FF)).to(s,{t:1,duration:9,ease:"none",onUpdate:()=>{const p=CIRCULO.getPointAt(s.t),tg=CIRCULO.getTangentAt(s.t);robot.position.set(p.x,0,p.z);robot.rotation.y=-Math.atan2(tg.z,tg.x)}}).to({},{duration:.6})}
   else if(a==="cer"){robot.position.set(0,.3,0);tl.set(robot.position,{y:.3}).to(robot.rotation,{y:Math.PI*2,duration:12,ease:"none"})}
   else if(a==="compLinha"){/* modalidade linha: volta cronometrada */
     const s={t:0};const lap=11;$("#oCrono").hidden=false;let volta=0;
     tl.call(()=>{s.t=0;volta++}).to(s,{t:1,duration:lap,ease:"none",onUpdate:()=>{const t=s.t%1,p=LINHA_FP.getPointAt(t),tg=LINHA_FP.getTangentAt(t);robot.position.set(p.x,0,p.z);robot.rotation.y=-Math.atan2(tg.z,tg.x);
       crono(s.t*lap,volta)}}).call(()=>ping(parts.line,"y",0x3DDC84)).to({},{duration:.8})}
-  else if(a==="compResgate"){/* modalidade resgate: duas bolinhas, uma de cada vez, carregadas na garra até a área */
-    const pose={x:RESG.start.x,z:RESG.start.z,th:0};const P=piloto(tl,pose,.85);const g=envs.compResgate;
-    tl.set(robot.position,{x:pose.x,z:pose.z}).set(robot.rotation,{y:0}).call(()=>resetVitimas(st.morta));
-    WP.v0.forEach(([x,z])=>P.vai(x,z));P.pega(vitimas[0],RESG.vit[0]);WP.a0.forEach(([x,z])=>P.vai(x,z));P.solta(vitimas[0],RESG.solta[0],g);
-    WP.v1.forEach(([x,z])=>P.vai(x,z));P.pega(vitimas[1],RESG.vit[1]);WP.a1.forEach(([x,z])=>P.vai(x,z));P.solta(vitimas[1],RESG.solta[1],g);
-    if(st.morta){WP.v2.forEach(([x,z])=>P.vai(x,z));P.pega(vitimas[2],RESG.vit[2]);WP.a2.forEach(([x,z])=>P.vai(x,z));P.solta(vitimas[2],RESG.solta[2],g)}
-    tl.to({},{duration:1.4})}
+  else if(a==="final"){/* mesma pista: área de linha, fita prata, sala de resgate */
+    $("#oCrono").hidden=false;tl.call(()=>resetVitimas(st.morta));tl.eventCallback("onUpdate",()=>crono(tl.time(),"tentativa"));
+    /* a câmera acompanha: primeiro a área de linha, depois a sala */
+    if(st.resgate)tl.call(()=>{if(tl.iteration()>1)flyCam("pistaFinal",1)});
+    seguePista(tl,pistaFinal,st.resgate?14:15);
+    if(st.resgate)tl.call(()=>flyCam("sala",1.4));
+    if(!st.resgate){tl.to({},{duration:1.6})}
+    else{const pose={x:RESG.start.x,z:RESG.start.z,th:0};const P=piloto(tl,pose,.85);const g=envs.compResgate;
+      WP.v0.forEach(([x,z])=>P.vai(x,z));P.pega(vitimas[0],RESG.vit[0]);WP.a0.forEach(([x,z])=>P.vai(x,z));P.solta(vitimas[0],RESG.solta[0],g);
+      WP.v1.forEach(([x,z])=>P.vai(x,z));P.pega(vitimas[1],RESG.vit[1]);WP.a1.forEach(([x,z])=>P.vai(x,z));P.solta(vitimas[1],RESG.solta[1],g);
+      if(st.morta){WP.v2.forEach(([x,z])=>P.vai(x,z));P.pega(vitimas[2],RESG.vit[2]);WP.a2.forEach(([x,z])=>P.vai(x,z));P.solta(vitimas[2],RESG.solta[2],g)}
+      tl.to({},{duration:1.4})}}
   else tl.to({},{duration:1});
 }
-function crono(seg,volta){const el=$("#oCrono span");if(el)el.textContent=`volta ${volta} · ${seg.toFixed(1).padStart(4,"0")} s`}
+function crono(seg,rot){const el=$("#oCrono span");if(el)el.textContent=`${typeof rot==="number"?"volta "+rot:rot} · ${seg.toFixed(1).padStart(4,"0")} s`}
+/* segue a trilha de uma pista OBR; cada evento acende o sensor que "viu" (verde, gap, cruzamento, obstáculo, fita prata) */
+function seguePista(tl,pista,dur){
+  const s={t:0},fx={cor:()=>ping(parts.color,"y",0x1FA64A),gap:()=>ping(parts.color,"y",0xffffff),cruz:()=>ping(parts.color,"y",0xF5C542),us:()=>ping(parts.hcsr04),prata:()=>ping(parts.color,"y",0xC9CED6)};let feitas=new Set();
+  tl.call(()=>{s.t=0;feitas=new Set()}).to(s,{t:1,duration:dur,ease:"none",onUpdate:()=>{const c=pista.curva,p=c.getPointAt(s.t),tg=c.getTangentAt(s.t);
+    let y=0;pista.lomb.forEach(([x,z])=>{const d=Math.hypot(p.x-x,p.z-z);if(d<.35)y=Math.max(y,.07*Math.cos(d/.35*Math.PI/2))});
+    robot.position.set(p.x,y,p.z);robot.rotation.y=-Math.atan2(tg.z,tg.x);
+    pista.ev.forEach(([m,k],i)=>{if(s.t>=m&&!feitas.has(i)){feitas.add(i);fx[k]()}})}});
+}
 
 /* explodir */
 function applyExplode(animate=true){
@@ -731,7 +802,7 @@ function renderUI(n,st,entering){
   trackEl.querySelectorAll(".o-seg").forEach((s,i)=>{s.classList.toggle("on",i===n-1);s.classList.toggle("past",i<n-1)});
   beltsEl.querySelectorAll(".o-belt").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===w.f));
   $("#oPrev").disabled=n<=lim.min;$("#oNext").disabled=n>=lim.max;
-  const modal=$("#oModal");modal.hidden=!st.fp;R.classList.toggle("o-fp",!!st.fp);modal.querySelectorAll("[data-fp]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.fp===fpModo));
+  R.classList.toggle("o-fp",!!st.fp);
   const tipo={exame:"exame de faixa · 100 XP",rec:"recuperação",cer:"cerimônia de faixa",aula:"aula ao vivo · 1h"}[w.tipo];
   const kitNote=n===4?`<span class="o-tag hot">encomendar Kit Iniciante</span>`:n===9?`<span class="o-tag hot">Kit Iniciante chega</span>`:n===21?`<span class="o-tag hot">Kit Avançado chega</span>`:"";
   const aqui=(modo==="creator"||modo==="pais")&&n===lim.max?`<span class="o-tag hot">${modo==="pais"?"semana atual":"você está aqui"}</span>`:"";
@@ -787,10 +858,9 @@ function ligarPainel(n){
 /* controles */
 $("#oPrev").onclick=()=>{stopPlay();editando=false;goWeek(cur-1)};$("#oNext").onclick=()=>{stopPlay();editando=false;goWeek(cur+1)};
 document.addEventListener("keydown",e=>{if(!R.isConnected||lim.min===lim.max)return;if(e.target.closest&&e.target.closest("input,textarea,select"))return;if(e.key==="ArrowRight"){stopPlay();goWeek(cur+1)}if(e.key==="ArrowLeft"){stopPlay();goWeek(cur-1)}});
-$("#oExplode").onclick=e=>{exploded=!exploded;e.currentTarget.setAttribute("aria-pressed",exploded);applyExplode(true)};
+$("#oExplode").onclick=e=>{exploded=!exploded;e.currentTarget.setAttribute("aria-pressed",exploded);applyExplode(true);if(curStage&&curStage.parts.includes("claw"))gsap.delayedCall(REDUCED?0:.75,()=>setClaw(.5))};
 $("#oSpin").onclick=e=>{controls.autoRotate=!controls.autoRotate;e.currentTarget.setAttribute("aria-pressed",controls.autoRotate)};
 $("#oCam").onclick=()=>flyCam(curStage.cam,.9);
-R.querySelectorAll("[data-fp]").forEach(b=>b.onclick=()=>{stopPlay();goWeek(cur,{fp:b.dataset.fp})});
 let playT=null;const playBtn=$("#oPlay");
 function stopPlay(){if(playT){clearInterval(playT);playT=null;playBtn.setAttribute("aria-pressed","false");playBtn.textContent="▶ tocar"}}
 playBtn.onclick=()=>{if(playT){stopPlay();return}playBtn.setAttribute("aria-pressed","true");playBtn.textContent="❚❚ pausar";if(cur>=lim.max)goWeek(lim.min);playT=setInterval(()=>{if(cur>=lim.max){stopPlay();return}goWeek(cur+1)},4200)};
@@ -812,4 +882,4 @@ export function montar(slot,op){
 }
 export function retomar(){if(R.isConnected){renderer.setAnimationLoop(frame);if(actionTl)actionTl.resume()}}
 export function pausar(){stopPlay();renderer.setAnimationLoop(null);if(actionTl)actionTl.pause()}
-window.__eron={get tl(){return actionTl},goWeek,parts,robot,camera,state,vitimas,get cur(){return cur},get fpModo(){return fpModo}};
+window.__eron={get tl(){return actionTl},goWeek,parts,robot,camera,state,vitimas,get cur(){return cur}};
