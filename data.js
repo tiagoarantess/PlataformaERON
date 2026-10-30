@@ -8,11 +8,11 @@ const FASES = [
     resumo: 'Começa no 1º dia, sem esperar o kit. LED, botão, buzzer, sensor de luz e motor no Tinkercad.',
     checkpoint: 'Motores funcionando no simulador e na protoboard.' },
   { id: 2, nome: 'Faixa Verde', cor: 'green', aulas: 12, ini: 9, fim: 20, titulo: 'O robô ganha vida',
-    resumo: 'O kit chega. Monta o chassi, liga a ponte H e faz o robô andar sozinho.',
-    checkpoint: 'Motor no chassi e sensor de obstáculo funcionando.' },
+    resumo: 'O kit chega. Monta o chassi, liga a ponte H, faz o robô andar e seguir a linha.',
+    checkpoint: 'Seguir a linha da pista inteira sozinho.' },
   { id: 3, nome: 'Faixa Azul', cor: 'blue', aulas: 13, ini: 21, fim: 33, titulo: 'O robô pensa',
-    resumo: 'Ultrassônico, máquina de estados e sensor de cor. O robô decide o que fazer.',
-    checkpoint: 'Desviar, seguir linha e ler sinais no chão.' },
+    resumo: 'Ultrassônico pra parar na parede e desviar do obstáculo; sensor de cor pra ler o marcador verde da pista, no modelo da OBR.',
+    checkpoint: 'Parar na parede, desviar do obstáculo e obedecer o marcador verde.' },
   { id: 4, nome: 'Faixa Roxa', cor: 'purple', aulas: 11, ini: 34, fim: 44, titulo: 'Missão de competição',
     resumo: 'Servo, garra e missão de busca e resgate, nos moldes do maior torneio do Brasil.',
     checkpoint: 'Pegar as bolinhas e levar pra área de resgate.' },
@@ -21,7 +21,7 @@ const FASES = [
     checkpoint: 'Sem faixa seguinte. Marcos: primeira competição, primeira medalha.' }
 ];
 
-/* Plano oficial do ano (22/10/2026), 48 semanas. É o conteúdo da Oficina 3D.
+/* Plano oficial do ano (22/10/2026, ultrassônico movido pra Azul e pista no modelo da OBR em 30/10), 48 semanas. É o conteúdo da Oficina 3D.
    [semana, aula, o que o Creator sai sabendo, desafio, material, tipo]. O professor edita por cima disso no painel (fica em S.aulas). */
 const PLANO = [
  [1,"Primeiro LED","Criar conta, conhecer a placa, LED com resistor, pinMode/digitalWrite/delay","Piscar a inicial do nome em Morse","Computador"],
@@ -38,25 +38,25 @@ const PLANO = [
  [12,"A ponte H","L298N pino a pino, bateria 7,4 V, GND comum","Duas rodas pra frente por 3 s e parar","L298N, suporte e 2 baterias 18650"],
  [13,"Funções de movimento","frente(), tras(), esquerda(), direita(), parar()","Robô vai e volta sem bater em nada","Robô montado"],
  [14,"Andar reto","PWM, compensar o motor mais forte","Robô desenha um quadrado no chão","Robô montado"],
- [15,"O sensor de obstáculo","Ultrassônico HC-SR04, trig/echo, tempo vira cm","Comparar a leitura com a fita métrica em 5 distâncias","HC-SR04, fita métrica"],
- [16,"Parar antes de bater","Primeira decisão do robô, ler 2 vezes antes de decidir","Parar a 15 cm da parede, 10 vezes seguidas","Robô + sensor"],
- [17,"Andar, parar, recuar","Sequência autônoma: anda, detecta, recua, gira","Robô andando 1 min pela sala sem encostar","Robô + sensor"],
- [18,"Ensaio","Ajuste individual com o orientador olhando","3 tentativas gravadas do exame","Robô + sensor"],
- [19,"Exame de faixa 2","Ao vivo: robô no chassi anda sozinho e para antes do obstáculo, 3 vezes seguidas",null,"Robô + sensor","exame"],
- [20,"Recuperação","Refazer o exame. Quem passou: robô que procura a saída de uma caixa","Desafio extra","Robô + sensor","rec"],
- [21,"Sensor de linha, 1 canal","TCRT5000, preto absorve e branco reflete, achar o limiar","Anotar leitura no branco, no preto e na borda","TCRT5000 5 canais, fita isolante preta, cartolina"],
- [22,"Os 5 canais","Transformar 5 números em posição da linha","Robô parado dizendo onde está a linha","Robô + pista"],
- [23,"Primeiro seguidor","Liga-desliga com if/else","1 metro de reta sem sair da fita","Robô + pista"],
- [24,"Por que ele treme","Controle proporcional (o P do PID)","O mesmo metro sem serpentear","Robô + pista"],
- [25,"A curva","Guardar a última posição e buscar a linha perdida","Pista com 2 curvas","Robô + pista"],
- [26,"Desviar e voltar","Contornar obstáculo e reencontrar a linha","Contornar uma caixa e voltar pra linha","Robô + pista + caixa"],
- [27,"Máquina de estados","SEGUINDO, PROCURANDO, DESVIANDO, PARADO","Reescrever o código em estados e desenhar o diagrama","Robô + papel"],
- [28,"Sensor de cor","TCS34725, I2C, ler R, G e B","Ler 5 papéis coloridos","TCS34725, papéis coloridos"],
- [29,"Calibrar cor","Luz e distância mudam a leitura; calibrar e normalizar","Acertar a cor 9 em 10","Robô + papéis"],
- [30,"Os sinais mandam","Verde vira, vermelho para, azul acelera","Pista com 2 sinais obedecidos","Robô + pista + papéis"],
- [31,"Juntar tudo","Prioridade: obstáculo em cima do sinal, quem ganha?","Pista completa: curva, sinal e obstáculo","Robô + pista completa"],
- [32,"Exame de faixa 3","Ao vivo: segue a linha, obedece um sinal de cor e desvia de um obstáculo",null,"Robô + pista completa","exame"],
- [33,"Recuperação","Refazer o exame. Quem passou: escrever um bug e como achou a causa","Desafio extra","Robô + pista","rec"],
+ [15, "Sensor de linha, 1 canal", "TCRT5000: preto absorve e branco reflete, achar o limiar", "Anotar a leitura no branco, no preto e na borda", "Seguidor 5 canais, fita isolante preta, cartolina"],
+ [16, "Os 5 canais", "Transformar 5 números em posição da linha", "Robô parado dizendo onde está a linha", "Robô + pista"],
+ [17, "Primeiro seguidor", "Liga-desliga com if/else; por que ele treme", "1 metro de reta sem sair da fita", "Robô + pista"],
+ [18, "Curvas sem tremer", "Controle proporcional (o P do PID) e guardar a última posição da linha", "Pista com 2 curvas sem perder a linha", "Robô + pista"],
+ [19, "Exame de faixa 2", "Ao vivo: o robô segue a linha da pista inteira sozinho, do começo ao fim", null, "Robô + pista", "exame"],
+ [20, "Recuperação", "Refazer o exame. Quem passou: volta cronometrada na pista", "Desafio extra: bater o próprio tempo", "Robô + pista", "rec"],
+ [21, "O sensor de obstáculo", "Ultrassônico HC-SR04, trig/echo, tempo vira cm", "Comparar a leitura com a fita métrica em 5 distâncias", "HC-SR04, fita métrica"],
+ [22, "Parar antes da parede", "Primeira decisão do robô: anda pra frente e para antes da parede; ler 2 vezes antes de decidir", "Parar a 15 cm da parede, 10 vezes seguidas", "Robô + sensor"],
+ [23, "Andar, parar, recuar", "Sequência autônoma: anda, detecta, recua, gira", "Robô andando 1 min pela sala sem encostar", "Robô + sensor"],
+ [24, "Obstáculo na linha", "Seguir a linha e enxergar o obstáculo no caminho", "Parar antes da caixa sem sair da linha", "Robô + pista + caixa"],
+ [25, "Desviar e voltar", "Contornar o obstáculo e reencontrar a linha", "Contornar uma caixa e voltar pra linha", "Robô + pista + caixa"],
+ [26, "Máquina de estados", "SEGUINDO, DESVIANDO, PROCURANDO, PARADO", "Reescrever o código em estados e desenhar o diagrama", "Robô + papel"],
+ [27, "Sensor de cor", "TCS34725: o infravermelho só vê claro e escuro, o sensor de cor lê R, G e B pelo I2C", "Ler 5 papéis coloridos", "TCS34725, papéis coloridos"],
+ [28, "Calibrar o verde", "Luz e distância mudam a leitura; separar verde, preto e branco", "Acertar o verde 9 em 10", "Robô + marcadores verdes"],
+ [29, "Marcador verde", "Na interseção, o verde diz pra que lado virar; sem verde, segue reto", "Pista com 2 interseções obedecidas", "Robô + pista com interseções"],
+ [30, "Beco sem saída", "Dois verdes antes da interseção: o robô volta pelo caminho de onde veio", "Meia-volta certa 5 vezes", "Robô + pista"],
+ [31, "Juntar tudo", "Pista no modelo da OBR: interseção com verde, gap na linha e obstáculo", "Pista completa sem ajuda", "Robô + pista completa"],
+ [32, "Exame de faixa 3", "Ao vivo: para na parede, desvia do obstáculo e obedece o marcador verde na pista", null, "Robô + pista completa", "exame"],
+ [33, "Recuperação", "Refazer o exame. Quem passou: lombada e rampa na pista", "Desafio extra", "Robô + pista", "rec"],
  [34,"O servo","Servo é ângulo, Servo.h, não alimentar pelo 5 V da placa","Varrer de 0 a 180 com 3 pausas","Servo SG90"],
  [35,"Montar a garra","Ângulo aberto e fechado, limite no código pra não queimar o servo","Garra abrindo e fechando por comando","Garra 3D, parafusos"],
  [36,"Pegar e soltar","pegar() e soltar(), tamanho e atrito da bolinha","Pegar a bolinha e soltar 20 cm adiante, 5 vezes","Bolinhas"],
@@ -69,9 +69,9 @@ const PLANO = [
  [43,"Exame de faixa 4","Ao vivo: robô entra na arena, acha a bolinha, pega e leva até a área segura",null,"Robô + arena","exame"],
  [44,"Recuperação","Refazer o exame. Quem passou: duas bolinhas na mesma missão","Desafio extra","Robô + arena","rec"],
  [45,"Cerimônia de faixa","Entrega da Faixa Preta com os pais assistindo; regras da competição alvo","Ler o regulamento e listar o que o robô ainda não faz","Robô","cer"],
- [46,"Treino de competição","Pista no padrão do regulamento, cronômetro, equipe com Capitão","Melhor tempo da pista, gravado","Robô + pista oficial"],
- [47,"Mini-torneio interno","Rodadas cronometradas entre a turma","Relatório do que mudar no robô","Robô + pista oficial"],
- [48,"Fechamento do ano","Influencer apresenta o robô pros pais; plano do ano 2 em mentoria","Gravar um tutorial curto pra um Creator novo","Robô"]
+ [46, "Treino de competição", "Pista completa no modelo da OBR (verde, gap, obstáculo), cronômetro e equipe com Capitão", "Melhor tempo da pista, gravado", "Robô + pista oficial"],
+ [47, "Mini-torneio interno", "Sala de resgate: as vítimas prateadas (vivas) vão pra área verde; rodadas cronometradas", "Relatório do que mudar no robô", "Robô + sala de resgate"],
+ [48, "Fechamento do ano", "Sala de resgate completa: a vítima preta (morta) vai pra área vermelha. O Influencer apresenta o robô pros pais; plano do ano 2 em mentoria", "Gravar um tutorial curto pra um Creator novo", "Robô + sala de resgate"]
 ];
 
 /* Meta de XP por fase. Hoje é 400 em todas; a proposta 400/700/600/600 ainda está aberta. */
