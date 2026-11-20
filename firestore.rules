@@ -1,0 +1,37 @@
+rules_version = '2';
+// Regras do banco da Plataforma ERON (Firebase > Firestore > Regras).
+// Ninguém lê nada sem login com e-mail confirmado E liberado em acessos/{email}.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function logado() { return request.auth != null && request.auth.token.email_verified == true; }
+    function meuEmail() { return request.auth.token.email.lower(); }
+    function caminhoAcesso() { return /databases/$(database)/documents/acessos/$(meuEmail()); }
+    function liberado() { return logado() && exists(caminhoAcesso()); }
+    function acesso() { return get(caminhoAcesso()).data; }
+    function prof() { return liberado() && acesso().papel == 'professor'; }
+    function familiaDe(id) { return liberado() && acesso().papel == 'familia' && acesso().aluno == id; }
+
+    // Lista de quem pode entrar. Só o professor mexe; cada um lê só o próprio.
+    match /acessos/{email} {
+      allow read: if prof() || (logado() && email == meuEmail());
+      allow write: if prof();
+    }
+    // Nome da turma, data do checkpoint, aulas editadas, exemplos de competição.
+    match /turma/{doc} {
+      allow read: if liberado();
+      allow write: if prof();
+    }
+    // Progresso de cada Creator. A turma toda vê (ranking); a família só marca tarefa, XP de tarefa e vídeo do próprio filho.
+    match /alunos/{id} {
+      allow read: if liberado();
+      allow write: if prof();
+      allow update: if familiaDe(id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['feitas', 'hist', 'videos']);
+    }
+    // Recados do professor: só a família daquele Creator lê.
+    match /recados/{id} {
+      allow read: if prof() || familiaDe(id);
+      allow write: if prof();
+    }
+  }
+}

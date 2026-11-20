@@ -1,7 +1,7 @@
-/* Plataforma ERON: Creator, pai/mãe e professor num site estático.
-   Os dados ficam no navegador (localStorage). Exportar/Importar leva a turma pra outro computador. */
+/* Plataforma ERON: Creator, família e professor num site estático.
+   Login de verdade e dados na nuvem (Firebase): ver nuvem.js e firestore.rules.
+   Só entra quem o professor liberou no painel. */
 
-const KEY = 'eron-plataforma-v1';
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -9,18 +9,10 @@ const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2
 const fase = id => FASES.find(f => f.id === id);
 const iniciais = n => n.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
 
-/* ---------- estado ---------- */
-let S = load();
-function load() {
-  let s = null;
-  try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) { s = null; }
-  if (!s || !Array.isArray(s.alunos)) s = JSON.parse(JSON.stringify(SEED));
-  s.alunos.forEach(a => { a.hist.forEach(h => { if (!h.f) h.f = a.fase; }); if (!a.semana) a.semana = fase(a.fase).ini; });
-  s.aulas = s.aulas || {};          // o que o professor editou por cima do plano de 48 semanas
-  s.midiaComp = s.midiaComp || [];  // vídeos e fotos de competição que o professor sobe (Faixa Preta)
-  return s;
-}
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { /* sem armazenamento: segue em memória */ return false; } }
+/* ---------- estado (espelho do banco; nuvem.js preenche depois do login) ---------- */
+let S = vazio();
+function vazio() { return { turma: 'Turma ERON', proximoCheckpoint: '', aulas: {}, midiaComp: [], alunos: [], acessos: [] }; }
+function save() { return window.NUVEM ? NUVEM.salvar(S) : false; }
 const aluno = id => S.alunos.find(a => a.id === id);
 
 /* ---------- regras ---------- */
@@ -121,51 +113,80 @@ function setTabs(items, atual) {
   nav.innerHTML = items.map(([href, nome]) => `<a href="${href}" ${href === atual ? 'aria-current="page"' : ''}>${nome}</a>`).join('');
 }
 
-/* ---------- sessão (simulada: sem servidor, qualquer senha entra) ---------- */
-const SKEY = 'eron-sessao';
-let SESSAO = null;
-try { SESSAO = JSON.parse(localStorage.getItem(SKEY)); } catch (e) { SESSAO = null; }
-function entrar(s) { SESSAO = s; try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch (e) {} }
-function sair() { SESSAO = null; try { localStorage.removeItem(SKEY); } catch (e) {} location.hash = '#/entrar'; render(); }
-function casa(s) { return s.papel === 'professor' ? '#/professor' : `#/${s.papel}/${s.id}`; }
+/* ---------- sessão (Firebase Auth) ---------- */
+let SESSAO = null;          // { papel: 'professor' | 'familia', id, email }
+let ESTADO = 'carregando';  // carregando | fora | verificar | sem-acesso | dentro
+function sair() { location.hash = '#/entrar'; NUVEM.sair(); }
+function casa(s) { return s.papel === 'professor' ? '#/professor' : `#/aluno/${s.id}/trilha`; }
+
+window.aoMudarLogin = async u => {
+  SESSAO = null; S = vazio();
+  if (!u) ESTADO = 'fora';
+  else if (!u.emailVerified) ESTADO = 'verificar';
+  else {
+    ESTADO = 'carregando'; render();
+    const s = await NUVEM.abrir(S, () => { const el = document.activeElement; if (!(el && el.closest('#app') && /INPUT|TEXTAREA|SELECT/.test(el.tagName))) render(); });
+    if (s) { SESSAO = s; ESTADO = 'dentro'; if (!location.hash || /entrar/.test(location.hash)) location.hash = casa(s); }
+    else ESTADO = 'sem-acesso';
+  }
+  render();
+};
 
 function render() {
   const p = location.hash.replace(/^#\/?/, '').split('/');
   window.scrollTo(0, 0);
   if (OF) OF.pausar();
   document.body.classList.remove('of-wide');
-  document.body.classList.toggle('is-login', !SESSAO);
-  if (!SESSAO || p[0] === 'entrar') { if (SESSAO) { location.hash = casa(SESSAO); return; } return telaLogin(); }
-  // cada perfil só vê o que é dele; o professor vê tudo
-  if (SESSAO.papel !== 'professor' && (p[0] !== SESSAO.papel || p[1] !== SESSAO.id)) {
-    if (!(SESSAO.papel === 'aluno' && p[0] === 'aluno' && p[1] === SESSAO.id)) { location.hash = casa(SESSAO); return; }
-  }
+  document.body.classList.toggle('is-login', ESTADO !== 'dentro');
+  if (ESTADO === 'carregando') { setWho(''); setTabs(null); $('#app').innerHTML = '<p class="muted" style="padding:40px 0">Carregando…</p>'; return; }
+  if (ESTADO !== 'dentro') return telaLogin();
+  if (p[0] === 'entrar') { location.hash = casa(SESSAO); return; }
+  // cada família só vê o próprio Creator; o professor vê tudo
+  if (SESSAO.papel !== 'professor' && (!['aluno', 'pais'].includes(p[0]) || p[1] !== SESSAO.id)) { if (location.hash !== casa(SESSAO)) { location.hash = casa(SESSAO); return; } }
   if (p[0] === 'aluno' && aluno(p[1])) return telaAluno(aluno(p[1]), p[2] || 'trilha');
   if (p[0] === 'pais' && aluno(p[1])) return telaPais(aluno(p[1]));
-  if (p[0] === 'professor') return p[1] === 'aulas' ? telaProfAulas() : telaProfessor();
-  location.hash = casa(SESSAO);
+  if (p[0] === 'professor' && SESSAO.papel === 'professor') return p[1] === 'aulas' ? telaProfAulas() : telaProfessor();
+  if (SESSAO.papel !== 'professor' && !aluno(SESSAO.id)) { setWho(''); setTabs(null); $('#app').innerHTML = '<div class="card" style="margin-top:24px"><b>Seu acesso está liberado, mas o Creator ainda não foi cadastrado.</b><p class="muted">Avise o professor da ERON.</p></div>'; return; }
+  if (location.hash !== casa(SESSAO)) location.hash = casa(SESSAO);
 }
 window.addEventListener('hashchange', render);
 
 /* ---------- login ---------- */
-const PAPEIS = {
-  aluno:     { nome: 'Creator',   cor: 'blue',   campo: 'Seu código de Creator', ph: 'luna', dica: 'Use o código que veio no e-mail de boas-vindas.' },
-  pais:      { nome: 'Pai/Mãe',   cor: 'orange', campo: 'E-mail do responsável', ph: 'voce@email.com', dica: 'O mesmo e-mail do contrato.' },
-  professor: { nome: 'Professor', cor: 'green',  campo: 'E-mail da ERON', ph: 'professor@eron.com.br', dica: 'Acesso da equipe.' }
-};
-let papelLogin = 'aluno';
-function acharAluno(txt) {
-  const k = txt.trim().toLowerCase().split('@')[0].normalize('NFD').replace(/[^a-z0-9]/g, '');
-  return S.alunos.find(a => a.id === k || a.nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') === k);
-}
+let modoLogin = 'entrar'; // entrar | criar | esqueci
 function telaLogin() {
   setWho(''); setTabs(null);
-  const P = PAPEIS[papelLogin];
   let vi = 0;
   if (!$('#lbox')) {
     $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="Plano de aulas, semana a semana">${slot3d}</section>`;
     oficina({ modo: 'publico', semana: 7, sub: 'Do zero à competição em um ano', titulo: 'Plano de aulas, semana a semana', intro: 'Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Aqui fica aberta a última aula de cada faixa, o exame: onde o aluno chega. O resto abre na plataforma, pra quem está matriculado.' });
   } else if (OF) OF.retomar();
+  const u = NUVEM.usuario;
+  let card;
+  if (ESTADO === 'verificar') card = `
+      <h2 class="h2">Confirme seu e-mail.</h2>
+      <p class="muted">Mandamos um link pra <b>${esc(u && u.email)}</b>. Abra, clique no link e volte aqui. Não achou? Olhe no spam.</p>
+      <p class="erro" id="lerr" role="alert" hidden></p>
+      <button class="btn btn-fill login-go" type="button" id="ljaconf">Já confirmei</button>
+      <div class="row"><a href="#/entrar" id="lreenv" class="muted small">Reenviar o e-mail</a><a href="#/entrar" id="lsair" class="muted small">Usar outro e-mail</a></div>`;
+  else if (ESTADO === 'sem-acesso') card = `
+      <h2 class="h2">Acesso ainda não liberado.</h2>
+      <p class="muted">O e-mail <b>${esc(u && u.email)}</b> entrou, mas ainda não está na turma. A plataforma é só pra alunos matriculados.</p>
+      <p class="muted">Já fez a matrícula? Fale com a ERON e confira se foi esse o e-mail informado. Ainda não? Comece pela avaliação de perfil, que é gratuita.</p>
+      <a class="btn btn-fill login-go" href="https://tiagoarantess.github.io/escola-de-robotica-online/#agendar">Agendar avaliação de perfil</a>
+      <div class="row"><a href="#/entrar" id="ljaconf" class="muted small">Já fui liberado, tentar de novo</a><a href="#/entrar" id="lsair" class="muted small">Usar outro e-mail</a></div>`;
+  else card = `
+      <div class="seg" role="tablist" aria-label="O que você quer fazer">${[['entrar', 'Entrar', 'blue'], ['criar', 'Primeiro acesso', 'orange']].map(([k, n, c]) =>
+        `<button type="button" role="tab" class="c-${c}" aria-selected="${k === modoLogin || (k === 'entrar' && modoLogin === 'esqueci')}" data-modo="${k}">${n}</button>`).join('')}</div>
+      <h2 class="h2">${modoLogin === 'criar' ? 'Crie sua senha.' : modoLogin === 'esqueci' ? 'Nova senha.' : 'Bora pra missão.'}</h2>
+      <label>E-mail do responsável<input type="email" id="lu" autocomplete="username" placeholder="voce@email.com" required></label>
+      ${modoLogin === 'esqueci' ? '' : `<label>${modoLogin === 'criar' ? 'Crie uma senha (6 ou mais)' : 'Senha'}<input type="password" id="lp" autocomplete="${modoLogin === 'criar' ? 'new-password' : 'current-password'}" placeholder="••••••••" required minlength="6"></label>`}
+      <p class="erro" id="lerr" role="alert" hidden></p>
+      <p class="ok-msg muted" id="lok" role="status" hidden></p>
+      <button class="btn btn-fill login-go" type="submit" id="lgo">${modoLogin === 'criar' ? 'Criar senha' : modoLogin === 'esqueci' ? 'Mandar link pro e-mail' : 'Entrar'}</button>
+      ${modoLogin === 'esqueci' ? '' : `<button class="btn btn-ghost" type="button" id="lgoogle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14zM12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10c.8-2.3 3-4.1 5.6-4.1z"/></svg>Entrar com Google</button>`}
+      <div class="row">${modoLogin === 'esqueci' ? '<a href="#/entrar" data-modo="entrar" class="muted small">Voltar pro login</a>' : '<a href="#/entrar" data-modo="esqueci" class="muted small">Esqueci minha senha</a>'}
+        <span class="small muted">${modoLogin === 'criar' ? 'Use o e-mail que você passou na matrícula.' : 'Só entra quem já fez a matrícula.'}</span></div>
+      <p class="note">Ainda não é aluno? <a href="https://tiagoarantess.github.io/escola-de-robotica-online/#agendar">Agende a avaliação de perfil gratuita</a>.</p>`;
   $('#lbox').innerHTML = `
   <div class="login">
     <section class="login-hero">
@@ -174,20 +195,7 @@ function telaLogin() {
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
       <div class="vs" id="vs" aria-live="polite"></div>
     </section>
-    <form class="card login-card c-${P.cor}" id="flogin" novalidate>
-      <div class="seg" role="tablist" aria-label="Quem está entrando">${Object.entries(PAPEIS).map(([k, v]) =>
-        `<button type="button" role="tab" class="c-${v.cor}" aria-selected="${k === papelLogin}" data-papel="${k}">${v.nome}</button>`).join('')}</div>
-      <h2 class="h2">${papelLogin === 'aluno' ? 'Bora pra missão.' : papelLogin === 'pais' ? 'Acompanhe a evolução.' : 'Painel da turma.'}</h2>
-      <label>${P.campo}<input type="text" id="lu" autocomplete="username" placeholder="${P.ph}" required></label>
-      <label>Senha<input type="password" id="lp" autocomplete="current-password" placeholder="••••••••" required></label>
-      <p class="erro" id="lerr" role="alert" hidden></p>
-      <button class="btn btn-fill login-go" type="submit" id="lgo">Entrar</button>
-      <button class="btn btn-ghost" type="button" id="lgoogle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14zM12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10c.8-2.3 3-4.1 5.6-4.1z"/></svg>Entrar com Google</button>
-      <div class="row"><a href="#/entrar" id="lesq" class="muted small">Esqueci minha senha</a><span class="small muted">${P.dica}</span></div>
-      <div class="demo"><span class="kick">Demonstração · qualquer senha entra</span>
-        <div class="chips">${papelLogin === 'professor' ? '<button type="button" class="chip" data-rapido="prof">Entrar como professor</button>'
-          : S.alunos.map(a => `<button type="button" class="chip" data-rapido="${a.id}">${esc(a.nome)}</button>`).join('')}</div></div>
-    </form>
+    <form class="card login-card c-${modoLogin === 'criar' ? 'orange' : 'blue'}" id="flogin" novalidate>${card}</form>
   </div>`;
   const vsTela = () => {
     const v = VANTAGENS[vi], n = VANTAGENS.length;
@@ -200,35 +208,39 @@ function telaLogin() {
     document.querySelectorAll('[data-vs]').forEach(b => b.onclick = () => { vi = +b.dataset.vs; vsTela(); });
   };
   vsTela();
-  document.querySelectorAll('[data-papel]').forEach(b => b.onclick = () => { papelLogin = b.dataset.papel; telaLogin(); $('#lu').focus(); });
-  const erro = m => { const e = $('#lerr'); e.textContent = m; e.hidden = !m; };
-  function fazerLogin(user) {
-    let s;
-    if (papelLogin === 'professor') s = { papel: 'professor', id: 'prof', nome: 'Professor' };
-    else {
-      const a = acharAluno(user);
-      if (!a) return erro(`Não achamos "${user}". Na demo, use o nome de um Creator: ${S.alunos.map(x => x.id).join(', ')}.`);
-      s = { papel: papelLogin, id: a.id, nome: a.nome };
-    }
-    erro(''); const go = $('#lgo'); go.disabled = true; go.textContent = 'Entrando…';
-    setTimeout(() => { entrar(s); location.hash = casa(s); render(); toast(papelLogin === 'aluno' ? `Bem-vindo de volta, ${s.nome}!` : 'Login feito'); }, 650);
-  }
-  $('#flogin').onsubmit = e => {
-    e.preventDefault();
-    const u = $('#lu').value.trim(), pw = $('#lp').value;
-    if (!u || !pw) return erro('Preencha os dois campos.');
-    fazerLogin(u);
+  const erro = m => { const e = $('#lerr'); if (e) { e.textContent = m; e.hidden = !m; } };
+  const ok = m => { const e = $('#lok'); if (e) { e.textContent = m; e.hidden = !m; } };
+  const ocupado = (b, t) => { if (b) { b.disabled = !!t; if (t) { b.dataset.t = b.textContent; b.textContent = t; } else if (b.dataset.t) b.textContent = b.dataset.t; } };
+  document.querySelectorAll('[data-modo]').forEach(b => b.onclick = e => { e.preventDefault(); modoLogin = b.dataset.modo; telaLogin(); const i = $('#lu'); if (i) i.focus(); });
+  const sairBtn = $('#lsair'); if (sairBtn) sairBtn.onclick = e => { e.preventDefault(); NUVEM.sair(); };
+  const reenv = $('#lreenv'); if (reenv) reenv.onclick = e => { e.preventDefault(); NUVEM.reenviar().then(() => toast('E-mail reenviado')).catch(x => erro(NUVEM.erroPt(x))); };
+  const jaconf = $('#ljaconf'); if (jaconf) jaconf.onclick = async e => {
+    e.preventDefault(); ocupado(jaconf, 'Conferindo…');
+    const u2 = await NUVEM.recarregar().catch(() => null);
+    if (u2 && !u2.emailVerified) { ocupado(jaconf); return erro('Ainda não aparece confirmado. Clique no link do e-mail e tente de novo.'); }
+    window.aoMudarLogin(u2);
   };
-  $('#lgoogle').onclick = () => fazerLogin(papelLogin === 'professor' ? 'prof' : ($('#lu').value.trim() || S.alunos[0].id));
-  $('#lesq').onclick = e => { e.preventDefault(); toast('Simulação: um link de nova senha iria pro seu e-mail.'); };
-  document.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => { $('#lu').value = b.dataset.rapido === 'prof' ? 'professor@eron.com.br' : b.dataset.rapido; $('#lp').value = 'demo'; fazerLogin($('#lu').value); });
+  const g = $('#lgoogle'); if (g) g.onclick = () => NUVEM.google().catch(x => erro(NUVEM.erroPt(x)));
+  $('#flogin').onsubmit = async e => {
+    e.preventDefault(); if (ESTADO !== 'fora') return;
+    const em = ($('#lu') || {}).value || '', pw = ($('#lp') || {}).value || '', go = $('#lgo');
+    erro(''); ok('');
+    if (!em.trim()) return erro('Coloque o e-mail.');
+    if (modoLogin !== 'esqueci' && !pw) return erro('Coloque a senha.');
+    try {
+      if (modoLogin === 'esqueci') { ocupado(go, 'Enviando…'); await NUVEM.esqueci(em); ok('Se esse e-mail tiver senha aqui, o link pra criar uma nova chega em instantes. Olhe também no spam.'); ocupado(go); }
+      else if (modoLogin === 'criar') { ocupado(go, 'Criando…'); await NUVEM.criar(em, pw); }
+      else { ocupado(go, 'Entrando…'); await NUVEM.entrar(em, pw); }
+    } catch (x) { ocupado(go); erro(NUVEM.erroPt(x)); }
+  };
 }
 
 /* ---------- aluno ---------- */
+const abasAluno = a => [[`#/aluno/${a.id}/trilha`, 'Trilha'], [`#/aluno/${a.id}/missao`, 'Missão'], [`#/aluno/${a.id}/turma`, 'Turma'], [`#/aluno/${a.id}/portfolio`, 'Portfólio'], [`#/pais/${a.id}`, 'Família']];
 function telaAluno(a, aba) {
   const base = `#/aluno/${a.id}`;
   setWho(`<span class="name">${esc(a.nome)}</span><span class="av">${iniciais(a.nome)}</span>`);
-  setTabs([[base + '/trilha', 'Trilha'], [base + '/missao', 'Missão'], [base + '/turma', 'Turma'], [base + '/portfolio', 'Portfólio']], base + '/' + aba);
+  setTabs(abasAluno(a), base + '/' + aba);
   const f = fase(a.fase);
   const meta = META_XP[a.fase], xp = xpFase(a), pc = percentil(a), seq = sequencia(a);
   const resumo = `
@@ -363,7 +375,7 @@ function telaAluno(a, aba) {
 /* ---------- pais ---------- */
 function telaPais(a) {
   setWho(`<span class="name">Família de ${esc(a.nome)}</span><span class="av" style="color:var(--text)">${iniciais(a.nome)}</span>`);
-  setTabs(null);
+  setTabs(abasAluno(a), `#/pais/${a.id}`);
   const f = fase(a.fase), sem = xpSemanas(a, 6), max = Math.max(1, ...sem);
   const aulasMes = a.hist.filter(h => h.a === 'aula' && semanaIdx(h.d) < 4).length;
   const missoesFeitas = Object.values(a.feitas).reduce((t, l) => t + l.length, 0);
@@ -429,7 +441,7 @@ function telaProfAulas() {
   const midia = S.midiaComp.map((m, i) => `<li class="row"><span>${m.url ? `<a href="${esc(m.url)}" target="_blank" rel="noopener"><b>${esc(m.titulo)}</b></a>` : `<b>${esc(m.titulo)}</b> <span class="muted small">foto</span>`}</span><button class="btn btn-ghost btn-sm" data-delm="${i}">remover</button></li>`).join('');
   $('#app').innerHTML = `
     <div class="stack" style="gap:4px"><span class="kick">Plano de 48 semanas</span><h1 class="h1">Conteúdo das aulas</h1>
-      <p class="muted">O que você muda aqui aparece no robô semana a semana da página de entrada. Fica salvo neste navegador.</p></div>
+      <p class="muted">O que você muda aqui aparece pros Creators matriculados. Fica salvo na nuvem.</p></div>
     ${FASES.map(f => `<section class="card top-bar c-${f.cor} stack"><h2 class="h2">${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· semanas ${f.ini} a ${f.fim}</span></h2>
       ${Array.from({ length: f.fim - f.ini + 1 }, (_, k) => linha(f.ini + k)).join('')}
       ${f.id === 5 ? `<div class="stack" style="margin-top:8px"><span class="kick">Exemplos reais da competição</span>
@@ -469,12 +481,14 @@ function telaProfessor() {
       </div>
       <div class="card stack">
         <label class="stack" style="gap:6px"><span class="kick">Próximo checkpoint</span><input type="date" id="cpd" value="${S.proximoCheckpoint || ''}"></label>
-        <div class="row" style="flex-wrap:wrap;justify-content:flex-start"><button class="btn btn-ghost btn-sm" id="exp">Exportar turma</button><label class="btn btn-ghost btn-sm">Importar<input type="file" id="imp" accept="application/json" hidden></label><button class="btn btn-ghost btn-sm" id="rst">Voltar ao exemplo</button></div>
+        <label class="stack" style="gap:6px"><span class="kick">Nome da turma</span><input type="text" id="tnome" maxlength="60" value="${esc(S.turma)}"></label>
+        <div class="row" style="flex-wrap:wrap;justify-content:flex-start"><button class="btn btn-ghost btn-sm" id="exp">Baixar cópia da turma</button></div>
       </div>
     </div>
     ${porFase.map(([f, l]) => `
       <section class="stack"><h2 class="h2">${f.nome} <span class="muted" style="font-size:14px;font-weight:400">· ${l.length} ${l.length === 1 ? 'Creator' : 'Creators'}</span></h2>
       <div class="students">${l.map(a => cardAluno(a, f)).join('')}</div></section>`).join('')}
+    ${blocoAcessos()}
     <form class="card stack" id="novo">
       <span class="kick">Adicionar Creator</span>
       <div class="grid3"><label>Nome<input type="text" id="nn" required maxlength="40"></label><label>Idade<input type="number" id="ni" min="5" max="17" value="10"></label>
@@ -519,15 +533,48 @@ function telaProfessor() {
     const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `eron-turma-${hoje()}.json`; a.click();
   };
-  $('#imp').onchange = e => {
-    const file = e.target.files[0]; if (!file) return;
-    file.text().then(t => { const d = JSON.parse(t); if (!Array.isArray(d.alunos)) throw 0; S = d; save(); S = load(); toast('Turma importada'); render(); })
-      .catch(() => toast('Arquivo inválido'));
+  $('#tnome').onchange = e => { S.turma = e.target.value.trim() || 'Turma ERON'; save(); toast('Nome da turma salvo'); };
+  ligarAcessos();
+}
+
+/* ---------- acessos: quem pode entrar ---------- */
+function blocoAcessos() {
+  const nomeDe = id => (aluno(id) || {}).nome || id;
+  const lista = (S.acessos || []).map(x => `<li class="row"><span><b>${esc(x.email)}</b> <span class="muted small">${x.papel === 'professor' ? 'professor' : 'família de ' + esc(nomeDe(x.aluno))}</span></span>
+      <span class="row" style="gap:6px"><button class="btn btn-ghost btn-sm" data-msg="${esc(x.email)}">Mensagem de boas-vindas</button><button class="btn btn-ghost btn-sm" data-bloq="${esc(x.email)}">Tirar acesso</button></span></li>`).join('');
+  return `<section class="card stack" id="acessos">
+      <span class="kick" style="color:var(--green)">Acessos · quem pode entrar</span>
+      <p class="muted small">Só entra na plataforma o e-mail liberado aqui. Libere depois que a família pagou e assinou. A família cria a senha em "Primeiro acesso", com esse mesmo e-mail, ou entra com o Google se for Gmail.</p>
+      ${lista ? `<ul class="list">${lista}</ul>` : '<p class="muted small">Ninguém liberado ainda.</p>'}
+      <form class="stack" id="flib"><div class="grid3">
+        <label>E-mail<input type="email" id="le" required placeholder="responsavel@email.com"></label>
+        <label>Quem é<select id="lq">${S.alunos.map(a => `<option value="${esc(a.id)}">Família de ${esc(a.nome)}</option>`).join('')}<option value="__prof">Professor</option></select></label>
+        <span style="align-self:end"><button class="btn btn-fill" type="submit">Liberar acesso</button></span></div>
+        ${S.alunos.length ? '' : '<p class="note">Cadastre o Creator primeiro (lá embaixo) pra liberar a família dele.</p>'}
+      </form>
+      <div class="card stack" id="msgbox" hidden><span class="kick">Mande pro WhatsApp da família</span><textarea id="msgtxt" rows="7" readonly></textarea><button class="btn btn-fill btn-sm" id="msgcp" type="button" style="justify-self:start">Copiar</button></div>
+    </section>`;
+}
+function ligarAcessos() {
+  const mostrar = email => {
+    const x = (S.acessos || []).find(y => y.email === email) || {}, nome = (aluno(x.aluno) || {}).nome;
+    $('#msgtxt').value = `Oi! O acesso${nome ? ' de ' + nome : ''} na Plataforma ERON está liberado.\n\n1. Entre em ${NUVEM.link}\n2. Toque em "Primeiro acesso"\n3. Use este e-mail: ${email}\n4. Crie uma senha e confirme pelo link que chega no e-mail.\n\nSe o e-mail for Gmail, pode só tocar em "Entrar com Google".`;
+    $('#msgbox').hidden = false; $('#msgtxt').focus(); $('#msgtxt').select();
   };
-  $('#rst').onclick = e => {
-    if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Apaga tudo? Clique de novo'; return; }
-    try { localStorage.removeItem(KEY); } catch (_) {} S = JSON.parse(JSON.stringify(SEED)); save(); S = load(); toast('Turma de exemplo restaurada'); render();
+  $('#flib').onsubmit = e => {
+    e.preventDefault();
+    const email = $('#le').value.trim().toLowerCase(), q = $('#lq').value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast('E-mail inválido');
+    const dados = q === '__prof' ? { papel: 'professor', d: hoje() } : { papel: 'familia', aluno: q, d: hoje() };
+    NUVEM.liberar(email, dados).then(() => { toast('Acesso liberado'); setTimeout(() => mostrar(email), 400); }).catch(x => toast(NUVEM.erroPt(x)));
   };
+  document.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => mostrar(b.dataset.msg));
+  document.querySelectorAll('[data-bloq]').forEach(b => b.onclick = () => {
+    if (b.dataset.bloq === (SESSAO && SESSAO.email)) return toast('Esse é o seu acesso. Não dá pra tirar daqui.');
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Confirmar'; return; }
+    NUVEM.bloquear(b.dataset.bloq).then(() => toast('Acesso removido')).catch(x => toast(NUVEM.erroPt(x)));
+  });
+  $('#msgcp').onclick = () => { const t = $('#msgtxt'); t.select(); (navigator.clipboard ? navigator.clipboard.writeText(t.value) : Promise.reject()).then(() => toast('Copiado'), () => { document.execCommand('copy'); toast('Copiado'); }); };
 }
 
 function cardAluno(a, f) {
@@ -552,4 +599,4 @@ function cardAluno(a, f) {
   </div>`;
 }
 
-render();
+window.toast = toast;

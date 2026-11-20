@@ -40,10 +40,23 @@ Pra testar no computador, é só abrir o `index.html` no navegador.
 - Cada fase do plano de aulas é uma faixa: Fase 1 Amarela, Fase 2 Verde, Fase 3 Azul, Fase 4 Roxa. Depois do 4º checkpoint o aluno vira **faixa preta** e segue treinando.
 - Tabela de XP: aula 10, desafio 20, documentar 15, fim de semana 10, ajudar colega 15, foto do kit organizado até 1h depois da aula 10 (a partir da Fase 2, quando o kit chega), checkpoint 100. Meta de 400 por fase (`META_XP` em `data.js`).
 
-## Limite desta versão
+## Login e dados (Firebase, plano grátis)
 
-Os dados ficam salvos **no navegador de quem usa** (localStorage). Ou seja: o que o professor lança no computador dele não aparece sozinho no celular do aluno. Pra levar a turma de um aparelho pra outro, use **Exportar turma** e **Importar** no painel do professor.
+- Projeto Firebase: `plataforma-eron` (conta Google do Tiago). Login por e-mail/senha ou Google. Banco Firestore em São Paulo.
+- **Só entra quem o professor liberou**: no painel do professor, card "Acessos", coloque o e-mail do responsável e escolha o Creator. Isso cria `acessos/{email}` no banco.
+- A família entra em "Primeiro acesso", cria a senha com esse e-mail e confirma pelo link que chega no e-mail (ou usa "Entrar com Google" se for Gmail). Sem e-mail confirmado e liberado, o banco não entrega nada.
+- Quem barra estranho são as **regras do banco** (`firestore.rules`, publicadas em Firebase > Firestore > Regras). Mudou o arquivo, cole lá e publique.
+- `firebase-config.js` tem o endereço do projeto. Não é senha: essa chave é pública por natureza.
+- Professor novo: libere o e-mail dele com "Quem é: Professor".
 
-O login é **simulado** (Creator, Pai/Mãe ou Professor): qualquer senha entra, e o usuário é o nome do Creator (ex.: `luna`, ou `rafa` pra ver a Faixa Preta) ou `professor`. Os botões de acesso rápido na tela de login entram direto. O botão do Google e o "Esqueci minha senha" só mostram aviso. A sessão fica no navegador (`eron-sessao`); pais e aluno só veem a própria página.
+### Como a pessoa se matricula
+1. Site → "Agendar avaliação de perfil" (gratuita, cai no WhatsApp).
+2. Avaliação + conversa com o professor, escolhe o plano.
+3. Paga e assina o contrato.
+4. Professor cadastra o Creator e libera o e-mail do responsável no painel; manda a mensagem de boas-vindas (botão pronto no painel).
+5. Família cria a senha e entra.
 
-Ou seja, isso não protege nada: qualquer pessoa com o link entra. Antes de colocar alunos reais, o próximo passo é um backend com login (ex.: Firebase ou Supabase, os dois têm plano grátis).
+## Limites desta versão
+
+- A família consegue marcar as tarefas da missão do próprio filho (dá XP), como antes. O resto (faixa, checkpoint, recados) só o professor muda.
+- A turma vê nome e XP dos colegas (é o ranking). Recados do professor só a família do Creator vê.

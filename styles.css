@@ -113,7 +113,7 @@ main { padding-block: 24px 32px; display: grid; gap: 16px; }
 .task.on span:not(.xp) { color: var(--text); }
 
 form.stack label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
-input[type=text], input[type=url], input[type=number], input[type=date], select, textarea { width: 100%; background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; color: var(--text); min-width: 0; }
+input[type=text], input[type=email], input[type=url], input[type=number], input[type=date], select, textarea { width: 100%; background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; color: var(--text); min-width: 0; }
 textarea { min-height: 80px; resize: vertical; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
