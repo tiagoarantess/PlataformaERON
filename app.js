@@ -163,16 +163,15 @@ function telaLogin() {
   const P = PAPEIS[papelLogin];
   let vi = 0;
   if (!$('#lbox')) {
-    $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="O robô do Creator, semana a semana">${slot3d}</section>`;
-    oficina({ modo: 'publico', semana: 12, sub: 'Plano de aulas · 48 semanas', titulo: 'O robô do Creator, semana a semana' });
+    $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="Plano de aulas, semana a semana">${slot3d}</section>`;
+    oficina({ modo: 'publico', semana: 7, sub: 'Do zero à competição em um ano', titulo: 'Plano de aulas, semana a semana', intro: 'Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Aqui fica aberta a última aula de cada faixa, o exame: onde o aluno chega. O resto abre na plataforma, pra quem está matriculado.' });
   } else if (OF) OF.retomar();
   $('#lbox').innerHTML = `
   <div class="login">
     <section class="login-hero">
-      <span class="kick live"><i></i>Estação ERON · plataforma do Creator</span>
+      <span class="kick live"><i></i>Estação ERON · plataforma de aulas</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
-      <p class="lead">Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Entra pra ver onde você está.</p>
       <div class="vs" id="vs" aria-live="polite"></div>
     </section>
     <form class="card login-card c-${P.cor}" id="flogin" novalidate>

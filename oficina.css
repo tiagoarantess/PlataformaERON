@@ -145,3 +145,9 @@ body.of-wide main.wrap{max-width:1320px}
   .o-xpgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .o-seg[data-qtd]::before{display:none}
 }
+
+/* vitrine pública (20/11): explicação das faixas em cima, abaixo do título; só a última aula de cada faixa aberta */
+.of .o-intro{margin:10px 0 0;color:var(--omuted);max-width:70ch}
+.of .o-below{margin:14px 0 18px}
+.of.o-pub .o-belts{display:none}
+.of .o-bcard .wks.aberta{color:var(--bc)}
