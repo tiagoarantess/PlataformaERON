@@ -129,6 +129,8 @@ R.innerHTML=`
     <div class="o-ttl"><span class="o-eyebrow" id="oEyebrow">Plano de aulas · 48 semanas</span><h2 id="oTitle">O robô do Creator, semana a semana</h2></div>
     <div class="o-belts" id="oBelts" role="group" aria-label="Pular para a faixa"></div>
   </div>
+  <p class="o-intro" id="oIntro" hidden></p>
+  <div class="o-below" id="oBelow"></div>
   <div class="o-main">
     <div class="o-stage">
       <div class="o-vp" id="oVp">
@@ -161,7 +163,6 @@ R.innerHTML=`
     </div>
     <aside class="o-panel" id="oPanel" aria-live="polite"></aside>
   </div>
-  <div class="o-below" id="oBelow"></div>
   <div class="o-foot">
     <span>XP: aula 10 · desafio 20 · documentar 15 · fim de semana 10 · foto do kit organizado 10 (da sem. 9 em diante) · ajudar colega 15 · exame 100. XP registra esforço; quem promove é o exame.</span>
     <span>Fonte: plano oficial "O ano semana por semana" (22/10/2026) e comparação dos kits (27/10/2026). Modelos 3D são ilustrativos, não fotos das peças compradas.</span>
@@ -384,7 +385,6 @@ function spots(g,list){list.forEach(([x,z])=>{const s=new THREE.SpotLight(0x9fd3
   const palco=C(1.9,2.0,.3,std(0x15151c,{roughness:.6}),0,.15,0,64);g.add(palco);
   const aro=mesh(new THREE.TorusGeometry(1.95,.02,8,96),std(0x4DB2FF,{emissive:0x4DB2FF,emissiveIntensity:1.6}));aro.rotation.x=Math.PI/2;aro.position.y=.3;g.add(aro);
   const tr=trofeu();tr.position.set(-2.6,0,-1.2);g.add(tr);
-  const belt=mesh(new THREE.TorusGeometry(.5,.06,8,48),std(0x0b0b0b,{roughness:.6}));belt.scale.set(1,.55,1);belt.position.set(0,2.2,0);belt.name="belt";g.add(belt);
   spots(g,[[-3.6,-2.4],[3.6,-2.4],[0,3]]);
 }
 /* sem. 46-48, modalidade linha: pista só de linha, contra o relógio */
@@ -551,8 +551,13 @@ function setClaw(open){const c=parts.claw,l=c.getObjectByName("fL"),r=c.getObjec
 
 /* limites de navegação por perfil */
 let lim={min:1,max:48};
+/* vitrine pública: só a última aula de cada faixa fica aberta (onde o aluno chega) */
+const CHEGA=Object.keys(F).map(k=>k==="preta"?F[k].fim:(W0.filter(w=>w.f===k&&w.tipo==="exame").pop()||{n:F[k].fim}).n);
+function aberta(n){return lim.set?lim.set.includes(n):n>=lim.min&&n<=lim.max}
+function passo(n,d){if(!lim.set)return n+d;const l=d>0?lim.set.filter(x=>x>n):lim.set.filter(x=>x<n).reverse();return l.length?l[0]:n}
 function goWeek(n,opts={}){
   n=Math.max(lim.min,Math.min(lim.max,n));
+  if(lim.set&&!aberta(n))n=lim.set.find(x=>x>=n)||lim.set[lim.set.length-1];
   const st=stageFor(n),prev=curStage;cur=n;
   const modeChanged=!prev||prev.mode!==st.mode;
   const prevSet=new Set(prev?prev.parts:[]),nextSet=new Set(st.parts);
@@ -735,7 +740,7 @@ function frame(){
   parts.wheels.traverse(o=>{if(o.name==="spin")o.rotation.z-=roll});
   parts.motors.traverse(o=>{if(o.name==="shaft")o.rotation.z-=roll});
   // cerimônia: troféu gira, faixa preta flutua
-  if(envs.cer.visible){const tr=envs.cer.getObjectByName("trophy");tr.rotation.y+=dt*.6;const b=envs.cer.getObjectByName("belt");b.position.y=2.2+Math.sin(t*1.5)*.08;b.rotation.y+=dt*.8}
+  if(envs.cer.visible){const tr=envs.cer.getObjectByName("trophy");tr.rotation.y+=dt*.6;}
   if(selected&&parts[selected].visible){selBox.box.setFromObject(parts[selected]).expandByScalar(.02);placeTip()}else if(selected){select(null)}
   renderer.render(scene,camera);
 }
@@ -756,21 +761,21 @@ const thumbs={};
 let modo="professor",editando=false,marcas={};
 const trackEl=$("#oTrack");
 W0.forEach(w=>{const b=document.createElement("button");b.className="o-seg"+(w.tipo==="exame"?" exam":"");b.dataset.f=w.f;b.dataset.n=w.n;b.style.setProperty("--sc",F[w.f].cor);
-  b.onclick=()=>{if(w.n>lim.max||w.n<lim.min)return;stopPlay();editando=false;goWeek(w.n)};trackEl.appendChild(b)});
+  b.onclick=()=>{if(!aberta(w.n))return;stopPlay();editando=false;goWeek(w.n)};trackEl.appendChild(b)});
 const beltsEl=$("#oBelts");
-Object.entries(F).forEach(([k,f])=>{const b=document.createElement("button");b.className="o-belt";b.dataset.k=k;b.style.setProperty("--bc",f.cor);b.innerHTML=`<i></i>${f.short}`;b.onclick=()=>{stopPlay();editando=false;goWeek(f.ini)};beltsEl.appendChild(b)});
+Object.entries(F).forEach(([k,f])=>{const b=document.createElement("button");b.className="o-belt";b.dataset.k=k;b.style.setProperty("--bc",f.cor);b.innerHTML=`<i></i>${f.short}`;b.onclick=()=>{stopPlay();editando=false;goWeek(lim.set?CHEGA[Object.keys(F).indexOf(k)]:f.ini)};beltsEl.appendChild(b)});
 function renderBelow(){
-  $("#oBelow").innerHTML=Object.entries(F).map(([k,f])=>{const fechada=f.ini>lim.max;return `<button class="o-bcard" data-k="${k}" style="--bc:${f.cor}" ${fechada?'aria-disabled="true"':""} data-go="${f.fim===48?45:(W0.find(w=>w.f===k&&w.tipo==="exame")||{n:f.ini}).n}">
-  <span class="bh"><i></i>${f.nome}</span><span class="wks">semanas ${f.ini} a ${f.fim} · ${f.fim-f.ini+1} semanas${fechada?" · bloqueada":""}</span>
+  $("#oBelow").innerHTML=Object.entries(F).map(([k,f])=>{const fechada=f.ini>lim.max;return `<button class="o-bcard" data-k="${k}" style="--bc:${f.cor}" ${fechada?'aria-disabled="true"':""} data-go="${lim.set?CHEGA[Object.keys(F).indexOf(k)]:f.fim===48?45:(W0.find(w=>w.f===k&&w.tipo==="exame")||{n:f.ini}).n}">
+  <span class="bh"><i></i>${f.nome}</span><span class="wks">semanas ${f.ini} a ${f.fim} · ${f.fim-f.ini+1} semanas${fechada?" · bloqueada":""}</span>${lim.set?`<span class="wks aberta">aberta aqui: semana ${CHEGA[Object.keys(F).indexOf(k)]}, onde a faixa chega</span>`:""}
   <p><b>Sai da faixa com:</b> ${f.sai}.</p><p><b>${k==="preta"?"Foco":"Exame"}:</b> ${f.exame}.</p></button>`}).join("");
   R.querySelectorAll(".o-bcard").forEach(b=>b.onclick=()=>{if(b.getAttribute("aria-disabled"))return;stopPlay();editando=false;goWeek(Math.min(+b.dataset.go,lim.max));vp.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"center"})});
 }
 function renderTrack(){
-  trackEl.querySelectorAll(".o-seg").forEach(s=>{const n=+s.dataset.n,w=aula(n),fora=n>lim.max||n<lim.min;
+  trackEl.querySelectorAll(".o-seg").forEach(s=>{const n=+s.dataset.n,w=aula(n),fora=!aberta(n);
     s.classList.toggle("lock",fora);s.disabled=fora;s.classList.toggle("aqui",(modo==="creator"||modo==="pais")&&n===lim.max);
     const quem=marcas[n]||[];if(quem.length)s.dataset.qtd=quem.length;else delete s.dataset.qtd;
     s.setAttribute("aria-label",`Semana ${n}: ${w.aula}${fora?" (bloqueada)":""}${quem.length?" · "+quem.join(", "):""}`);
-    s.title=`Sem. ${n} · ${w.aula}${fora?" · abre quando você chegar lá":""}${quem.length?"\nCreators aqui: "+quem.join(", "):""}`});
+    s.title=`Sem. ${n} · ${w.aula}${fora?(lim.set?" · bloqueada: abre na plataforma":" · abre quando você chegar lá"):""}${quem.length?"\nCreators aqui: "+quem.join(", "):""}`});
   beltsEl.querySelectorAll(".o-belt").forEach(b=>{b.disabled=F[b.dataset.k].ini>lim.max});
 }
 
@@ -815,7 +820,7 @@ function renderUI(n,st,entering){
   $("#oHudScn").textContent=w.aula;$("#oHudBadge").textContent=st.badge;
   trackEl.querySelectorAll(".o-seg").forEach((s,i)=>{s.classList.toggle("on",i===n-1);s.classList.toggle("past",i<n-1)});
   beltsEl.querySelectorAll(".o-belt").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===w.f));
-  $("#oPrev").disabled=n<=lim.min;$("#oNext").disabled=n>=lim.max;
+  $("#oPrev").disabled=passo(n,-1)===n||n<=lim.min;$("#oNext").disabled=passo(n,1)===n||n>=lim.max;
   R.classList.toggle("o-fp",!!st.fp);$("#oPula").hidden=st.action!=="final";
   const tipo={exame:"exame de faixa · 100 XP",rec:"recuperação",cer:"cerimônia de faixa",aula:"aula ao vivo · 1h"}[w.tipo];
   const kitNote=n===4?`<span class="o-tag hot">encomendar Kit Iniciante</span>`:n===9?`<span class="o-tag hot">Kit Iniciante chega</span>`:n===21?`<span class="o-tag hot">Kit Avançado chega</span>`:"";
@@ -851,7 +856,10 @@ function renderUI(n,st,entering){
     } else {$("#oXpn").textContent=x.total;if(maxXP)$("#oXpbar").style.width=(soFar/maxXP*100)+"%"}
   }
   if(selected&&!st.parts.includes(selected))select(null);
+  semCreator();
 }
+function semCreator(){if(modo!=="publico")return;const tw=document.createTreeWalker(R,NodeFilter.SHOW_TEXT);let t;while((t=tw.nextNode())){const v=t.nodeValue;if(/Creator|Influencer/.test(v))t.nodeValue=v.replace(/Creators/g,"alunos").replace(/Creator/g,"aluno").replace(/Influencer/g,"faixa preta")}
+  R.querySelectorAll("[aria-label],[title]").forEach(e=>["aria-label","title"].forEach(a=>{const v=e.getAttribute(a);if(v&&/Creator/.test(v))e.setAttribute(a,v.replace(/Creators/g,"alunos").replace(/Creator/g,"aluno"))}))}
 function soPainel(){renderUI(cur,curStage,[])}
 function ligarPainel(n){
   const ed=$("#oEdit");if(ed)ed.onclick=()=>{editando=true;soPainel();const i=R.querySelector("#oEditF input");if(i)i.focus()};
@@ -870,8 +878,8 @@ function ligarPainel(n){
 }
 
 /* controles */
-$("#oPrev").onclick=()=>{stopPlay();editando=false;goWeek(cur-1)};$("#oNext").onclick=()=>{stopPlay();editando=false;goWeek(cur+1)};
-document.addEventListener("keydown",e=>{if(!R.isConnected||lim.min===lim.max)return;if(e.target.closest&&e.target.closest("input,textarea,select"))return;if(e.key==="ArrowRight"){stopPlay();goWeek(cur+1)}if(e.key==="ArrowLeft"){stopPlay();goWeek(cur-1)}});
+$("#oPrev").onclick=()=>{stopPlay();editando=false;goWeek(passo(cur,-1))};$("#oNext").onclick=()=>{stopPlay();editando=false;goWeek(passo(cur,1))};
+document.addEventListener("keydown",e=>{if(!R.isConnected||lim.min===lim.max)return;if(e.target.closest&&e.target.closest("input,textarea,select"))return;if(e.key==="ArrowRight"){stopPlay();goWeek(passo(cur,1))}if(e.key==="ArrowLeft"){stopPlay();goWeek(passo(cur,-1))}});
 $("#oExplode").onclick=e=>{exploded=!exploded;e.currentTarget.setAttribute("aria-pressed",exploded);applyExplode(true);if(curStage&&curStage.parts.includes("claw"))gsap.delayedCall(REDUCED?0:.75,()=>setClaw(.5))};
 $("#oSpin").onclick=e=>{controls.autoRotate=!controls.autoRotate;e.currentTarget.setAttribute("aria-pressed",controls.autoRotate)};
 $("#oCam").onclick=()=>flyCam(curStage.cam,.9);
@@ -883,7 +891,7 @@ R.querySelectorAll("[data-pula]").forEach(b=>b.onclick=()=>{stopPlay();const res
   flyCam(resg?"sala":"pistaFinal",.9)});
 let playT=null;const playBtn=$("#oPlay");
 function stopPlay(){if(playT){clearInterval(playT);playT=null;playBtn.setAttribute("aria-pressed","false");playBtn.textContent="▶ tocar"}}
-playBtn.onclick=()=>{if(playT){stopPlay();return}playBtn.setAttribute("aria-pressed","true");playBtn.textContent="❚❚ pausar";if(cur>=lim.max)goWeek(lim.min);playT=setInterval(()=>{if(cur>=lim.max){stopPlay();return}goWeek(cur+1)},4200)};
+playBtn.onclick=()=>{if(playT){stopPlay();return}playBtn.setAttribute("aria-pressed","true");playBtn.textContent="❚❚ pausar";if(passo(cur,1)===cur)goWeek(lim.set?lim.set[0]:lim.min);playT=setInterval(()=>{if(passo(cur,1)===cur){stopPlay();return}goWeek(passo(cur,1))},4200)};
 $("#oLoading").remove();
 
 /* ================= API pro app.js ================= */
@@ -891,12 +899,13 @@ $("#oLoading").remove();
              titulo, sub, marcas: {semana: [nomes]}, host: {aula(n), salvarAula(n, patch|null), midia(), addMidia(m), delMidia(i)} } */
 export function montar(slot,op){
   host=op.host;modo=op.modo||"professor";marcas=op.marcas||{};editando=false;
-  lim=modo==="professor"||modo==="publico"?{min:1,max:48}:modo==="pais"?{min:op.ate,max:op.ate}:{min:1,max:op.ate};
-  R.classList.toggle("o-so1",lim.min===lim.max);
+  lim=modo==="publico"?{min:1,max:48,set:CHEGA}:modo==="professor"?{min:1,max:48}:modo==="pais"?{min:op.ate,max:op.ate}:{min:1,max:op.ate};
+  R.classList.toggle("o-so1",lim.min===lim.max);R.classList.toggle("o-pub",!!lim.set);
+  const intro=$("#oIntro");intro.hidden=!op.intro;intro.textContent=op.intro||"";
   $("#oEyebrow").textContent=op.sub||"Plano de aulas · 48 semanas";$("#oTitle").textContent=op.titulo||"O robô do Creator, semana a semana";
   playBtn.setAttribute("aria-label",modo==="creator"?"Tocar as semanas até onde você está":"Tocar o ano inteiro");
   slot.replaceWith(R);
-  stopPlay();renderTrack();renderBelow();resize();
+  stopPlay();renderTrack();renderBelow();semCreator();resize();
   curStage=null;cur=0;goWeek(op.semana||lim.max,{recenter:true});
   renderer.setAnimationLoop(frame);
 }
