@@ -161,7 +161,6 @@ function acharAluno(txt) {
 function telaLogin() {
   setWho(''); setTabs(null);
   const P = PAPEIS[papelLogin];
-  let vi = 0;
   if (!$('#lbox')) {
     $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="Plano de aulas, semana a semana">${slot3d}</section>`;
     oficina({ modo: 'publico', semana: 7, sub: 'Do zero à competição em um ano', titulo: 'Plano de aulas, semana a semana', intro: 'Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Aqui fica aberta a última aula de cada faixa, o exame: onde o aluno chega. O resto abre na plataforma, pra quem está matriculado.' });
@@ -172,7 +171,8 @@ function telaLogin() {
       <span class="kick live"><i></i>Estação ERON · plataforma de aulas</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
-      <div class="vs" id="vs" aria-live="polite"></div>
+      <div class="fx4">${FASES.slice(0, 4).map(f => `<article class="fx c-${f.cor}"><span class="kick">${esc(f.nome)} · ${f.aulas} semanas</span><b>${esc(f.titulo)}</b><p>${esc(f.resumo)}</p><span class="fx-ex">Exame: ${esc(f.checkpoint)}</span></article>`).join('')}
+        <article class="fx fx-preta c-belt"><span class="kick">${esc(FASES[4].nome)} · ${FASES[4].fim - FASES[4].ini + 1} semanas</span><b>${esc(FASES[4].titulo)}</b><p>${esc(FASES[4].resumo)}</p></article></div>
     </section>
     <form class="card login-card c-${P.cor}" id="flogin" novalidate>
       <div class="seg" role="tablist" aria-label="Quem está entrando">${Object.entries(PAPEIS).map(([k, v]) =>
@@ -189,17 +189,6 @@ function telaLogin() {
           : S.alunos.map(a => `<button type="button" class="chip" data-rapido="${a.id}">${esc(a.nome)}</button>`).join('')}</div></div>
     </form>
   </div>`;
-  const vsTela = () => {
-    const v = VANTAGENS[vi], n = VANTAGENS.length;
-    $('#vs').innerHTML = `<div class="vs-par"><div class="vs-on"><span class="kick">Online</span><b>${esc(v.on)}</b>${[].concat(v.onx).map(t => `<span class="vs-x">✓ ${esc(t)}</span>`).join('')}</div>
-      <span class="vs-mid" aria-hidden="true">vs</span>
-      <div class="vs-pre"><span class="kick">Presencial</span><b>${esc(v.pre)}</b><span class="vs-x">✕ ${esc(v.prex)}</span></div></div>
-      <div class="vs-nav"><div class="vs-dots">${VANTAGENS.map((_, i) => `<button type="button" data-vs="${i}" aria-label="Comparação ${i + 1}" ${i === vi ? 'aria-current="true"' : ''}></button>`).join('')}</div>
-      <span class="mono vs-n">${String(vi + 1).padStart(2, '0')}/${String(n).padStart(2, '0')}</span>
-      <button type="button" class="btn btn-ghost vs-prox" data-vs="${(vi + 1) % n}">${vi + 1 < n ? 'Próximo' : 'Recomeçar'} →</button></div>`;
-    document.querySelectorAll('[data-vs]').forEach(b => b.onclick = () => { vi = +b.dataset.vs; vsTela(); });
-  };
-  vsTela();
   document.querySelectorAll('[data-papel]').forEach(b => b.onclick = () => { papelLogin = b.dataset.papel; telaLogin(); $('#lu').focus(); });
   const erro = m => { const e = $('#lerr'); e.textContent = m; e.hidden = !m; };
   function fazerLogin(user) {
