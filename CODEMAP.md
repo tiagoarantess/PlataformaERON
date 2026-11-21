@@ -1,11 +1,14 @@
 # CODEMAP: Plataforma ERON
 
-Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), roteamento por `#hash`, dados no `localStorage` do navegador (demo, sem backend).
+Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), roteamento por `#hash`, login e dados no Firebase (Auth + Firestore).
 
 ## Arquivos
 
 | Arquivo | O que tem | Mexe quando |
 |---|---|---|
+| `nuvem.js` | Firebase: login, liberação por `acessos/{email}`, espelho banco <-> estado `S` (`salvar` grava só o que mudou). | Mudou login ou estrutura do banco. |
+| `firebase-config.js` | Endereço do projeto Firebase (público). | Trocou de projeto. |
+| `firestore.rules` | Regras de segurança do banco (cópia do que está publicado). | Mudou quem pode ler/escrever. |
 | `index.html` | Casca: topo, abas, `<div id="app">`, scripts. | Raro. |
 | `data.js` | Regras do método: `FASES` (faixas), `PLANO` (48 semanas), `VANTAGENS`, `META_XP`, `ACOES` (tabela de XP), `MISSOES`, `SEED` (turma de exemplo). | Mudou conteúdo, XP ou faixa. |
 | `app.js` | Telas e lógica. | Mudou tela ou regra de cálculo. |
@@ -18,12 +21,12 @@ Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), ro
 
 | Função | Linha aprox. | Faz |
 |---|---|---|
-| `load` / `save` | 14 / 23 | Lê e grava o estado `S` no `localStorage` (`eron-plataforma-v1`). |
+| `vazio` / `save` | 14 / 16 | Estado `S` vazio; `save` manda pro banco via `NUVEM.salvar`. |
 | `sequencia`, `percentil`, `xpSemanas` | 31-43 | Sequência de semanas, percentil dentro da mesma faixa, XP por semana. |
 | `missaoAtual`, `conquistas`, `proximaConquista` | 48-64 | Missão da semana e conquistas. |
 | `registrar`, `checkpoint` | 78 / 81 | Dá XP por ação; aprova exame de faixa (único jeito de subir de faixa). |
 | `oficina` | 100 | Liga a Oficina 3D. |
-| `entrar`, `sair`, `render` | 128-132 | Sessão (`eron-sessao`) e roteador. |
+| `aoMudarLogin`, `sair`, `render` | 115-150 | Sessão Firebase (estados: fora, verificar, sem-acesso, dentro) e roteador. |
 | `telaLogin` | 161 | `#/entrar`: comparação, login Creator/Pais/Professor, 3D abaixo. |
 | `telaAluno` | 229 | `#/aluno/ID/trilha`, `/missao`, `/turma`, `/portfolio`. |
 | `telaPais` | 365 | `#/pais/ID`: faixa, XP, percentil, presença. |
@@ -40,4 +43,4 @@ Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), ro
 ## Próximos passos conhecidos
 
 - PWA (instalar no celular).
-- Backend real (login de verdade, dados fora do navegador) ainda não existe.
+- Banco: `acessos/{email}` (papel professor|familia, aluno), `turma/config`, `turma/midia`, `alunos/{id}`, `recados/{id}`.
