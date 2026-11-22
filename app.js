@@ -162,8 +162,8 @@ function telaLogin() {
   setWho(''); setTabs(null);
   const P = PAPEIS[papelLogin];
   if (!$('#lbox')) {
-    $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="Plano de aulas, semana a semana">${slot3d}</section>`;
-    oficina({ modo: 'publico', semana: 7, sub: 'Do zero à competição em um ano', titulo: 'Plano de aulas, semana a semana', intro: 'Quatro faixas até a preta. Pra subir de faixa, só passando no checkpoint. Aqui fica aberta a última aula de cada faixa, o exame: onde o aluno chega. O resto abre na plataforma, pra quem está matriculado.' });
+    $('#app').innerHTML = `<div id="lbox"></div><section class="vitrine" aria-label="Plano de aulas">${slot3d}</section>`;
+    oficina({ modo: 'publico', semana: 7, sub: 'Do zero à competição em um ano', titulo: 'Plano de aulas', sub3d: 'Progressão a cada semana (apenas algumas aulas desbloqueadas 🔓)' });
   } else if (OF) OF.retomar();
   $('#lbox').innerHTML = `
   <div class="login">
@@ -171,8 +171,8 @@ function telaLogin() {
       <span class="kick live"><i></i>Estação ERON · plataforma de aulas</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
-      <div class="fx4">${FASES.slice(0, 4).map(f => `<article class="fx c-${f.cor}"><span class="kick">${esc(f.nome)} · ${f.aulas} semanas</span><b>${esc(f.titulo)}</b><p>${esc(f.resumo)}</p><span class="fx-ex">Exame: ${esc(f.checkpoint)}</span></article>`).join('')}
-        <article class="fx fx-preta c-belt"><span class="kick">${esc(FASES[4].nome)} · ${FASES[4].fim - FASES[4].ini + 1} semanas</span><b>${esc(FASES[4].titulo)}</b><p>${esc(FASES[4].resumo)}</p></article></div>
+      <div class="fx4">${FASES.slice(0, 4).map(f => `<article class="fx c-${f.cor}"><span class="kick">${esc(f.nome)}</span><b>${esc(f.titulo)}</b><p>${esc(f.resumo)}</p></article>`).join('')}
+        <article class="fx fx-preta c-belt"><span class="kick">${esc(FASES[4].nome)}</span><b>${esc(FASES[4].titulo)}</b><p>${esc(FASES[4].resumo)}</p></article></div>
     </section>
     <form class="card login-card c-${P.cor}" id="flogin" novalidate>
       <div class="seg" role="tablist" aria-label="Quem está entrando">${Object.entries(PAPEIS).map(([k, v]) =>

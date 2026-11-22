@@ -111,6 +111,9 @@ body.of-wide main.wrap{max-width:1320px}
 .o-mi .cap a{color:var(--accent);text-decoration:underline}
 .o-vazio{border:1px dashed var(--oline);border-radius:10px;aspect-ratio:16/9;display:grid;place-items:center;text-align:center;padding:8px;font-family:var(--omono);font-size:10.5px;color:var(--omuted);letter-spacing:.06em}
 
+.o-sub3d{margin:0;font-size:clamp(17px,2vw,21px);font-weight:800;line-height:1.2}
+.o-bcard .bt{font-weight:800;font-size:15px}
+.o-pub .o-bcard p{color:var(--fg);font-size:14px}
 .o-below{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
 .o-bcard{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--oline);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .o-bcard:hover{border-color:var(--bc)}

@@ -131,6 +131,7 @@ R.innerHTML=`
   </div>
   <p class="o-intro" id="oIntro" hidden></p>
   <div class="o-below" id="oBelow"></div>
+  <h3 class="o-sub3d" id="oSub3d" hidden></h3>
   <div class="o-main">
     <div class="o-stage">
       <div class="o-vp" id="oVp">
@@ -764,10 +765,12 @@ W0.forEach(w=>{const b=document.createElement("button");b.className="o-seg"+(w.t
   b.onclick=()=>{if(!aberta(w.n))return;stopPlay();editando=false;goWeek(w.n)};trackEl.appendChild(b)});
 const beltsEl=$("#oBelts");
 Object.entries(F).forEach(([k,f])=>{const b=document.createElement("button");b.className="o-belt";b.dataset.k=k;b.style.setProperty("--bc",f.cor);b.innerHTML=`<i></i>${f.short}`;b.onclick=()=>{stopPlay();editando=false;goWeek(lim.set?CHEGA[Object.keys(F).indexOf(k)]:f.ini)};beltsEl.appendChild(b)});
+/* vitrine pública: os cards de baixo usam os mesmos textos curtos das faixas da entrada (data.js) */
+const FX=typeof FASES!=="undefined"?FASES:[];
 function renderBelow(){
   $("#oBelow").innerHTML=Object.entries(F).map(([k,f])=>{const fechada=f.ini>lim.max;return `<button class="o-bcard" data-k="${k}" style="--bc:${f.cor}" ${fechada?'aria-disabled="true"':""} data-go="${lim.set?CHEGA[Object.keys(F).indexOf(k)]:f.fim===48?45:(W0.find(w=>w.f===k&&w.tipo==="exame")||{n:f.ini}).n}">
-  <span class="bh"><i></i>${f.nome}</span><span class="wks">semanas ${f.ini} a ${f.fim} · ${f.fim-f.ini+1} semanas${fechada?" · bloqueada":""}</span>${lim.set?`<span class="wks aberta">aberta aqui: semana ${CHEGA[Object.keys(F).indexOf(k)]}, onde a faixa chega</span>`:""}
-  <p><b>Sai da faixa com:</b> ${f.sai}.</p><p><b>${k==="preta"?"Foco":"Exame"}:</b> ${f.exame}.</p></button>`}).join("");
+  <span class="bh"><i></i>${f.nome}</span>${lim.set&&FX[Object.keys(F).indexOf(k)]?`<p class="bt">${FX[Object.keys(F).indexOf(k)].titulo}</p><p>${FX[Object.keys(F).indexOf(k)].resumo}</p></button>`:`<span class="wks">semanas ${f.ini} a ${f.fim} · ${f.fim-f.ini+1} semanas${fechada?" · bloqueada":""}</span>
+  <p><b>Sai da faixa com:</b> ${f.sai}.</p><p><b>${k==="preta"?"Foco":"Exame"}:</b> ${f.exame}.</p></button>`}`}).join("");
   R.querySelectorAll(".o-bcard").forEach(b=>b.onclick=()=>{if(b.getAttribute("aria-disabled"))return;stopPlay();editando=false;goWeek(Math.min(+b.dataset.go,lim.max));vp.scrollIntoView({behavior:REDUCED?"auto":"smooth",block:"center"})});
 }
 function renderTrack(){
@@ -902,6 +905,8 @@ export function montar(slot,op){
   lim=modo==="publico"?{min:1,max:48,set:CHEGA}:modo==="professor"?{min:1,max:48}:modo==="pais"?{min:op.ate,max:op.ate}:{min:1,max:op.ate};
   R.classList.toggle("o-so1",lim.min===lim.max);R.classList.toggle("o-pub",!!lim.set);
   const intro=$("#oIntro");intro.hidden=!op.intro;intro.textContent=op.intro||"";
+  const s3=$("#oSub3d");s3.hidden=!op.sub3d;s3.textContent=op.sub3d||"";
+  if(lim.set)R.querySelector(".o-main").after($("#oBelow"));else s3.before($("#oBelow"));
   $("#oEyebrow").textContent=op.sub||"Plano de aulas · 48 semanas";$("#oTitle").textContent=op.titulo||"O robô do Creator, semana a semana";
   playBtn.setAttribute("aria-label",modo==="creator"?"Tocar as semanas até onde você está":"Tocar o ano inteiro");
   slot.replaceWith(R);
