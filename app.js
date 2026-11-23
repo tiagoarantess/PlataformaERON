@@ -168,7 +168,7 @@ function telaLogin() {
   $('#lbox').innerHTML = `
   <div class="login">
     <section class="login-hero">
-      <span class="kick live"><i></i>Estação ERON · plataforma de aulas</span>
+      <span class="kick live"><i></i>Estação ERON · plataforma de acompanhamento</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
       <div class="fx4">${FASES.slice(0, 4).map(f => `<article class="fx c-${f.cor}"><span class="kick">${esc(f.nome)}</span><b>${esc(f.titulo)}</b><p>${esc(f.resumo)}</p></article>`).join('')}

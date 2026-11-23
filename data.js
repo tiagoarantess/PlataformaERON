@@ -17,7 +17,7 @@ const FASES = [
     resumo: 'Nos moldes do maior torneio do Brasil.',
     checkpoint: 'Pegar as bolinhas e levar pra área de resgate.' },
   { id: 5, nome: 'Faixa Preta', cor: 'belt', aulas: 0, ini: 45, fim: 48, titulo: 'Treina até o pódio',
-    resumo: 'Segue treinando e se aperfeiçoando em desafios de competição.',
+    resumo: 'Segue se aperfeiçoando em desafios da competição.',
     checkpoint: 'Sem faixa seguinte. Marcos: primeira competição, primeira medalha.' }
 ];
 

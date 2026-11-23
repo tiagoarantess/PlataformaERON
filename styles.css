@@ -36,6 +36,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .logo i { width: 6px; height: 6px; border-radius: 50%; background: var(--line2); }
 .logo i.on { background: var(--accent); }
 .brand b { display: block; font-weight: 800; font-stretch: 115%; font-size: 17px; letter-spacing: -.015em; line-height: 1.05; }
+.brand .nome { display: block; height: 18px; width: auto; margin-bottom: 4px; }
 .brand small { display: block; font-size: 10px; color: var(--muted); }
 .who { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .who .name { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
