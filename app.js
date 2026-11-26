@@ -7,6 +7,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const hoje = () => new Date().toISOString().slice(0, 10);
 const fmt = d => new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
 const fase = id => FASES.find(f => f.id === id);
+const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 const iniciais = n => n.split(/\s+/).map(p => p[0]).join('').slice(0, 2).toUpperCase();
 
 /* ---------- estado ---------- */
@@ -20,7 +21,13 @@ function load() {
   s.midiaComp = s.midiaComp || [];  // vídeos e fotos de competição que o professor sobe (Faixa Preta)
   return s;
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { /* sem armazenamento: segue em memória */ return false; } }
+function save() {
+  // logado na nuvem: professor grava no Firebase; família só lê (nunca mexe no navegador de ninguém)
+  if (SESSAO && SESSAO.nuvem) {
+    if (SESSAO.papel === 'professor') NUVEM.salvarDepois(S, err => { if (err) toast('Não salvou na nuvem: ' + err); });
+    return true;
+  }
+  try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch (e) { /* sem armazenamento: segue em memória */ return false; } }
 const aluno = id => S.alunos.find(a => a.id === id);
 
 /* ---------- regras ---------- */
@@ -126,7 +133,11 @@ const SKEY = 'eron-sessao';
 let SESSAO = null;
 try { SESSAO = JSON.parse(localStorage.getItem(SKEY)); } catch (e) { SESSAO = null; }
 function entrar(s) { SESSAO = s; try { localStorage.setItem(SKEY, JSON.stringify(s)); } catch (e) {} }
-function sair() { SESSAO = null; try { localStorage.removeItem(SKEY); } catch (e) {} location.hash = '#/entrar'; render(); }
+function sair() {
+  if (SESSAO && SESSAO.nuvem) { NUVEM.sair(); S = load(); }
+  SESSAO = null; try { localStorage.removeItem(SKEY); } catch (e) {} location.hash = '#/entrar'; render();
+}
+const NUVEM_ON = () => window.NUVEM && NUVEM.ativo;
 function casa(s) { return s.papel === 'professor' ? '#/professor' : `#/${s.papel}/${s.id}`; }
 
 function render() {
@@ -158,6 +169,17 @@ function acharAluno(txt) {
   const k = txt.trim().toLowerCase().split('@')[0].normalize('NFD').replace(/[^a-z0-9]/g, '');
   return S.alunos.find(a => a.id === k || a.nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') === k);
 }
+async function abrirNuvem(r) {
+  const novo = await NUVEM.carregar(r);
+  if (r.papel === 'pais') {
+    const a = novo.alunos.find(x => x.id === r.id);
+    if (!a) throw { message: 'Seu Creator ainda não está na turma. Fale com o professor.' };
+    r.nome = a.nome;
+  }
+  S = novo;
+  entrar({ papel: r.papel, id: r.id, nome: r.nome, nuvem: true });
+  location.hash = casa(SESSAO); render();
+}
 function telaLogin() {
   setWho(''); setTabs(null);
   const P = PAPEIS[papelLogin];
@@ -183,8 +205,8 @@ function telaLogin() {
       <p class="erro" id="lerr" role="alert" hidden></p>
       <button class="btn btn-fill login-go" type="submit" id="lgo">Entrar</button>
       <button class="btn btn-ghost" type="button" id="lgoogle"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3zM12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22zM6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14zM12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10c.8-2.3 3-4.1 5.6-4.1z"/></svg>Entrar com Google</button>
-      <div class="row"><a href="#/entrar" id="lesq" class="muted small">Esqueci minha senha</a><span class="small muted">${P.dica}</span></div>
-      <div class="demo"><span class="kick">Demonstração · qualquer senha entra</span>
+      <div class="row"><a href="#/entrar" id="lesq" class="muted small">Esqueci minha senha</a>${NUVEM_ON() && papelLogin !== 'aluno' ? '<a href="#/entrar" id="lprim" class="small">Primeiro acesso</a>' : ''}<span class="small muted">${P.dica}</span></div>
+      <div class="demo"><span class="kick">${NUVEM_ON() && papelLogin !== 'aluno' ? 'Demonstração com dados fictícios' : 'Demonstração · qualquer senha entra'}</span>
         <div class="chips">${papelLogin === 'professor' ? '<button type="button" class="chip" data-rapido="prof">Entrar como professor</button>'
           : S.alunos.map(a => `<button type="button" class="chip" data-rapido="${a.id}">${esc(a.nome)}</button>`).join('')}</div></div>
     </form>
@@ -202,14 +224,43 @@ function telaLogin() {
     erro(''); const go = $('#lgo'); go.disabled = true; go.textContent = 'Entrando…';
     setTimeout(() => { entrar(s); location.hash = casa(s); render(); toast(papelLogin === 'aluno' ? `Bem-vindo de volta, ${s.nome}!` : 'Login feito'); }, 650);
   }
+  const nuvem = NUVEM_ON() && papelLogin !== 'aluno';
+  /* Login real (Firebase): pais e professor. O papel vem de acessos/{email}, liberado pelo professor. */
+  async function loginNuvem(fn) {
+    erro(''); const go = $('#lgo'); go.disabled = true; go.textContent = 'Entrando…';
+    try {
+      const r = await fn();
+      if (r.pendente) {
+        try { await NUVEM.reenviarConfirmacao(); } catch (_) {}
+        await NUVEM.sair(); return erro(`Falta confirmar o e-mail: abra o link que mandamos pra ${r.email} e entre de novo.`);
+      }
+      if (r.semVinculo) { await NUVEM.sair(); return erro(`${r.email} ainda não foi liberado pela ERON. Peça pro professor cadastrar esse e-mail.`); }
+      await abrirNuvem(r); toast('Login feito');
+    } catch (e) { erro(NUVEM.erroTxt(e)); }
+    finally { if (go.isConnected) { go.disabled = false; go.textContent = 'Entrar'; } }
+  }
   $('#flogin').onsubmit = e => {
     e.preventDefault();
     const u = $('#lu').value.trim(), pw = $('#lp').value;
     if (!u || !pw) return erro('Preencha os dois campos.');
+    if (nuvem) return loginNuvem(() => NUVEM.entrar(u, pw));
     fazerLogin(u);
   };
-  $('#lgoogle').onclick = () => fazerLogin(papelLogin === 'professor' ? 'prof' : ($('#lu').value.trim() || S.alunos[0].id));
-  $('#lesq').onclick = e => { e.preventDefault(); toast('Simulação: um link de nova senha iria pro seu e-mail.'); };
+  $('#lgoogle').onclick = () => nuvem ? loginNuvem(() => NUVEM.entrarGoogle())
+    : fazerLogin(papelLogin === 'professor' ? 'prof' : ($('#lu').value.trim() || S.alunos[0].id));
+  $('#lesq').onclick = async e => {
+    e.preventDefault();
+    if (!nuvem) return toast('Simulação: um link de nova senha iria pro seu e-mail.');
+    const u = $('#lu').value.trim(); if (!u) return erro('Digite seu e-mail e clique de novo em "Esqueci minha senha".');
+    try { await NUVEM.esqueci(u); erro(''); toast('Mandamos um link de nova senha pro seu e-mail.'); } catch (x) { erro(NUVEM.erroTxt(x)); }
+  };
+  if ($('#lprim')) $('#lprim').onclick = async e => {
+    e.preventDefault();
+    const u = $('#lu').value.trim(), pw = $('#lp').value;
+    if (!u || pw.length < 6) return erro('Primeiro acesso: digite o e-mail cadastrado na ERON e crie uma senha (mínimo 6 caracteres). Depois clique aqui de novo.');
+    try { await NUVEM.primeiroAcesso(u, pw); erro(''); toast('Conta criada'); erro(`Conta criada. Abra o link que mandamos pra ${u.toLowerCase()} e depois clique em Entrar.`); }
+    catch (x) { erro(NUVEM.erroTxt(x)); }
+  };
   document.querySelectorAll('[data-rapido]').forEach(b => b.onclick = () => { $('#lu').value = b.dataset.rapido === 'prof' ? 'professor@eron.com.br' : b.dataset.rapido; $('#lp').value = 'demo'; fazerLogin($('#lu').value); });
 }
 
@@ -458,7 +509,8 @@ function telaProfessor() {
       </div>
       <div class="card stack">
         <label class="stack" style="gap:6px"><span class="kick">Próximo checkpoint</span><input type="date" id="cpd" value="${S.proximoCheckpoint || ''}"></label>
-        <div class="row" style="flex-wrap:wrap;justify-content:flex-start"><button class="btn btn-ghost btn-sm" id="exp">Exportar turma</button><label class="btn btn-ghost btn-sm">Importar<input type="file" id="imp" accept="application/json" hidden></label><button class="btn btn-ghost btn-sm" id="rst">Voltar ao exemplo</button></div>
+        <div class="row" style="flex-wrap:wrap;justify-content:flex-start"><button class="btn btn-ghost btn-sm" id="exp">Exportar turma</button><label class="btn btn-ghost btn-sm">Importar<input type="file" id="imp" accept="application/json" hidden></label>${SESSAO.nuvem ? '' : '<button class="btn btn-ghost btn-sm" id="rst">Voltar ao exemplo</button>'}</div>
+        <p class="note">${SESSAO.nuvem ? 'Turma real, salva na nuvem. Os pais entram com o e-mail cadastrado em cada Creator.' : 'Demonstração: fica só neste navegador.'}</p>
       </div>
     </div>
     ${porFase.map(([f, l]) => `
@@ -468,6 +520,7 @@ function telaProfessor() {
       <span class="kick">Adicionar Creator</span>
       <div class="grid3"><label>Nome<input type="text" id="nn" required maxlength="40"></label><label>Idade<input type="number" id="ni" min="5" max="17" value="10"></label>
       <label>Faixa<select id="nf">${FASES.map(f => `<option value="${f.id}">${f.nome}</option>`).join('')}</select></label></div>
+      <label>E-mail do responsável<input type="email" id="ne" maxlength="120" placeholder="o mesmo do contrato"></label>
       <button class="btn btn-fill" type="submit" style="justify-self:start">Adicionar</button>
     </form>`;
 
@@ -497,10 +550,20 @@ function telaProfessor() {
     e.preventDefault(); const a = aluno(fm.dataset.rec), t = fm.querySelector('textarea').value.trim();
     if (t) { a.recados.push({ d: hoje(), t }); save(); toast('Recado enviado pros pais'); render(); }
   });
+  document.querySelectorAll('form[data-resp]').forEach(fm => fm.onsubmit = e => {
+    e.preventDefault(); const a = aluno(fm.dataset.resp), em = fm.querySelector('input').value.trim().toLowerCase();
+    if (em && !emailOk(em)) return toast('E-mail inválido');
+    if (em && S.alunos.some(x => x !== a && (x.emailResp || '') === em)) return toast('Esse e-mail já está ligado a outro Creator');
+    a.emailResp = em; save();
+    toast(!em ? 'Acesso dos pais removido' : SESSAO.nuvem ? `Liberado: ${em} já pode entrar` : 'E-mail salvo (demonstração)'); render();
+  });
   $('#novo').onsubmit = e => {
     e.preventDefault(); const nome = $('#nn').value.trim(); if (!nome) return;
     let id = nome.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '') || 'aluno'; while (aluno(id)) id += '1';
-    S.alunos.push({ id, nome, idade: +$('#ni').value, fase: +$('#nf').value, semana: fase(+$('#nf').value).ini, hist: [], feitas: {}, videos: [], checkpoints: [], recados: [] });
+    const em = $('#ne').value.trim().toLowerCase();
+    if (em && !emailOk(em)) return toast('E-mail do responsável inválido');
+    if (em && S.alunos.some(x => (x.emailResp || '') === em)) return toast('Esse e-mail já está ligado a outro Creator');
+    S.alunos.push({ id, nome, idade: +$('#ni').value, fase: +$('#nf').value, semana: fase(+$('#nf').value).ini, hist: [], feitas: {}, videos: [], checkpoints: [], recados: [], emailResp: em });
     save(); toast(`${nome} entrou na turma`); render();
   };
   $('#cpd').onchange = e => { S.proximoCheckpoint = e.target.value; save(); toast('Data do checkpoint salva'); };
@@ -513,7 +576,7 @@ function telaProfessor() {
     file.text().then(t => { const d = JSON.parse(t); if (!Array.isArray(d.alunos)) throw 0; S = d; save(); S = load(); toast('Turma importada'); render(); })
       .catch(() => toast('Arquivo inválido'));
   };
-  $('#rst').onclick = e => {
+  if ($('#rst')) $('#rst').onclick = e => {
     if (e.target.dataset.sure !== '1') { e.target.dataset.sure = '1'; e.target.textContent = 'Apaga tudo? Clique de novo'; return; }
     try { localStorage.removeItem(KEY); } catch (_) {} S = JSON.parse(JSON.stringify(SEED)); save(); S = load(); toast('Turma de exemplo restaurada'); render();
   };
@@ -535,10 +598,26 @@ function cardAluno(a, f) {
     <div class="st-acts" style="align-items:center"><span class="small muted">Semana ${a.semana} de 48 · ${esc(tituloSemana(a.semana))}</span><button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="sem-" aria-label="Voltar uma semana">−</button><button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="sem+" aria-label="Avançar uma semana">+ semana</button></div>
     <div class="st-acts">${acts.map(k => `<button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="${k}">+${ACOES[k].xp} ${ACOES[k].curto}</button>`).join('')}</div>
     ${a.fase < 5 ? `<div class="st-acts"><button class="btn btn-ok btn-sm" data-id="${a.id}" data-act="ok">Checkpoint: passou</button><button class="btn btn-bad btn-sm" data-id="${a.id}" data-act="refaz">Refaz</button></div>` : ''}
+    <details><summary>Acesso dos pais${a.emailResp ? ` · <span class="muted">${esc(a.emailResp)}</span>` : ' · <span style="color:var(--warn)">sem e-mail</span>'}</summary><form class="stack" data-resp="${a.id}" style="margin-top:8px">
+      <label>E-mail do responsável<input type="email" value="${esc(a.emailResp || '')}" maxlength="120" placeholder="o mesmo do contrato"></label>
+      <p class="note">No 1º acesso, o pai/mãe clica em "Primeiro acesso" (ou "Entrar com Google") com esse e-mail.</p>
+      <button class="btn btn-fill btn-sm" type="submit" style="justify-self:start">Salvar e-mail</button></form></details>
     <details><summary>Recado pros pais</summary><form class="stack" data-rec="${a.id}" style="margin-top:8px"><textarea maxlength="400" placeholder="O que ${esc(a.nome)} fez de bom essa semana?"></textarea><button class="btn btn-fill btn-sm" type="submit" style="justify-self:start">Enviar recado</button></form></details>
     <details><summary>Histórico de XP</summary><ul class="hist">${hist.map(([h, i]) => `<li><span>${fmt(h.d)} · ${ACOES[h.a]?.nome || h.a} <span class="num muted">+${xpDe(h)}</span></span><button data-id="${a.id}" data-undo="${i}" aria-label="Desfazer">desfazer</button></li>`).join('') || '<li class="muted">Nada ainda.</li>'}</ul>
       <button class="btn btn-ghost btn-sm" data-id="${a.id}" data-act="del" style="margin-top:8px">Remover Creator</button></details>
   </div>`;
 }
 
-render();
+/* Ao abrir: se a sessão era da nuvem, confere o login no Firebase e baixa a turma antes de desenhar. */
+(async function boot() {
+  if (SESSAO && SESSAO.nuvem) {
+    $('#app').innerHTML = '<p class="muted" style="padding:40px 0">Carregando a turma…</p>';
+    try {
+      const r = NUVEM_ON() ? await NUVEM.restaurar() : null;
+      if (!r || !r.papel || r.papel !== SESSAO.papel) throw 0;
+      S = await NUVEM.carregar(r);
+      if (r.papel === 'pais' && !aluno(r.id)) throw 0;
+    } catch (e) { SESSAO = null; try { localStorage.removeItem(SKEY); } catch (_) {} location.hash = '#/entrar'; }
+  }
+  render();
+})();

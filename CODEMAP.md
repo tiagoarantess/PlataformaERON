@@ -10,6 +10,9 @@ Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), ro
 | `data.js` | Regras do método: `FASES` (faixas), `PLANO` (48 semanas), `VANTAGENS`, `META_XP`, `ACOES` (tabela de XP), `MISSOES`, `SEED` (turma de exemplo). | Mudou conteúdo, XP ou faixa. |
 | `app.js` | Telas e lógica. | Mudou tela ou regra de cálculo. |
 | `oficina.js` / `oficina.css` | Robô 3D semana a semana (Three.js + GSAP via CDN), na tela de entrada. | Mudou robô, pista ou sensor. |
+| `firebase-config.js` | Config do Firebase (projeto `plataforma-eron`). `null` = só demonstração. | Trocou de projeto. |
+| `nuvem.js` | Login real (e-mail/senha e Google) e leitura/gravação no Firestore. | Mudou login ou estrutura do banco. |
+| `firestore.rules` | Cópia das regras publicadas no console. | Mudou permissão. |
 | `styles.css` | Visual (mesma paleta da landing). | Mudou visual. |
 | `logo-eron.png` | Adesivo no chassi e na caixa do 3D. | — |
 | `README.md` | Como publicar no GitHub Pages e regras gerais. | — |
@@ -40,4 +43,5 @@ Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), ro
 ## Próximos passos conhecidos
 
 - PWA (instalar no celular).
-- Backend real (login de verdade, dados fora do navegador) ainda não existe.
+- Login real já existe pra Pai/Mãe e Professor (Firebase). Creator ainda entra pela demonstração (código).
+- Banco: `acessos/{email}` {papel professor|familia, aluno}, `turma/estado`, `alunos/{id}`, `recados/{id}`. Professor libera o pai pelo campo "Acesso dos pais" no card do Creator.
