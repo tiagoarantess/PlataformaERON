@@ -193,7 +193,7 @@ function telaLogin() {
       <span class="kick live"><i></i>Estação ERON · plataforma de acompanhamento</span>
       <h1 class="wide">Entrar<br>na trilha.</h1>
       <div class="strip" aria-hidden="true">${FASES.map(f => `<i class="c-${f.cor}"></i>`).join('')}</div>
-      <div class="fx4">${FASES.slice(0, 4).map(f => `<article class="fx c-${f.cor}"><span class="kick">${esc(f.nome)}</span><b>${esc(f.titulo)}</b><p>${esc(f.resumo)}</p></article>`).join('')}
+      <div class="fx4">${FASES.slice(0, 4).map(f => `<article class="fx c-${f.cor}"><span class="kick">${esc(f.nome)}</span><b>${esc(f.titulo)}</b><p>${esc(f.resumo)}</p><img class="fx-ico" src="img/fase${f.id}.png" alt="" width="96" height="96" loading="lazy"></article>`).join('')}
         <article class="fx fx-preta c-belt"><span class="kick">${esc(FASES[4].nome)}</span><b>${esc(FASES[4].titulo)}</b><p>${esc(FASES[4].resumo)}</p></article></div>
     </section>
     <form class="card login-card c-${P.cor}" id="flogin" novalidate>
