@@ -598,7 +598,7 @@ function cardAluno(a, f) {
 
 /* Ao abrir: se a sessão era da nuvem, confere o login no Firebase e baixa a turma antes de desenhar. */
 (async function boot() {
-  if (SESSAO && !SESSAO.nuvem) { SESSAO = null; try { localStorage.removeItem(SKEY); } catch (_) {} } // sessões antigas da demonstração não valem mais
+  if (SESSAO && !SESSAO.nuvem) { SESSAO = null; try { localStorage.removeItem(SKEY); } catch (_) {} location.hash = '#/entrar'; } // sessões antigas da demonstração não valem mais
   if (SESSAO) {
     $('#app').innerHTML = '<p class="muted" style="padding:40px 0">Carregando a turma…</p>';
     try {
