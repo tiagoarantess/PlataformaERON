@@ -43,5 +43,5 @@ Mapa rápido de onde está cada coisa. Site estático (HTML + CSS + JS puro), ro
 ## Próximos passos conhecidos
 
 - PWA (instalar no celular).
-- Login real já existe pra Pai/Mãe e Professor (Firebase). Creator ainda entra pela demonstração (código).
-- Banco: `acessos/{email}` {papel professor|familia, aluno}, `turma/estado`, `alunos/{id}`, `recados/{id}`. Professor libera o pai pelo campo "Acesso dos pais" no card do Creator.
+- Todo login é real (Firebase). Não existe mais entrada de demonstração. Creator = `acessos/{email}` com papel `familia` + `quem: 'creator'` (as regras publicadas já cobrem); ele grava só `feitas`, `hist` e `videos` do próprio doc.
+- Banco: `acessos/{email}` {papel professor|familia, aluno}, `turma/estado`, `alunos/{id}`, `recados/{id}`. Professor libera pai e Creator no campo "Acessos" do card.

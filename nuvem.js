@@ -1,6 +1,7 @@
 /* Nuvem da ERON (Firebase Auth + Firestore, projeto plataforma-eron). Só liga se firebase-config.js tiver a config.
    Estrutura (igual às regras publicadas no console, cópia em firestore.rules):
-     acessos/{email}   { papel: 'professor' | 'familia', aluno }   quem pode entrar (só o professor grava)
+     acessos/{email}   { papel: 'professor' | 'familia', aluno, quem: 'pais' | 'creator' }   quem pode entrar (só o professor grava)
+                       o Creator usa papel 'familia' + quem 'creator': as regras publicadas já deixam ele ler a turma e marcar tarefa/XP/vídeo só dele
      turma/estado      { turma, proximoCheckpoint, aulas, midiaComp }
      alunos/{id}       progresso de cada Creator (todo mundo liberado lê, pro ranking)
      recados/{id}      { lista }  recados do professor, só a família daquele Creator lê */
@@ -45,7 +46,7 @@ window.NUVEM = (function () {
     if (!r.exists()) return { semVinculo: true, email };
     const d = r.data();
     if (d.papel === 'professor') return { papel: 'professor', id: 'prof', nome: 'Professor', email };
-    if (d.papel === 'familia' && d.aluno) return { papel: 'pais', id: d.aluno, email };
+    if (d.papel === 'familia' && d.aluno) return { papel: d.quem === 'creator' ? 'aluno' : 'pais', id: d.aluno, email };
     return { semVinculo: true, email };
   }
 
@@ -98,8 +99,8 @@ window.NUVEM = (function () {
     }));
     if (sessao.papel === 'professor') {
       const ac = await F.getDocs(F.collection(db, 'acessos'));
-      ac.forEach(d => { const v = d.data(); const a = v.papel === 'familia' && S.alunos.find(x => x.id === v.aluno); if (a) a.emailResp = d.id; });
-      antes = { ids: new Set(S.alunos.map(a => a.id)), emails: new Set(S.alunos.map(a => norm(a.emailResp)).filter(Boolean)) };
+      ac.forEach(d => { const v = d.data(); const a = v.papel === 'familia' && S.alunos.find(x => x.id === v.aluno); if (a) a[v.quem === 'creator' ? 'emailCreator' : 'emailResp'] = d.id; });
+      antes = { ids: new Set(S.alunos.map(a => a.id)), emails: new Set(S.alunos.flatMap(a => [norm(a.emailResp), norm(a.emailCreator)]).filter(Boolean)) };
     }
     return S;
   }
@@ -114,17 +115,25 @@ window.NUVEM = (function () {
       midiaComp: (L.midiaComp || []).filter(m => !m.data) }); // fotos do computador ficam só no navegador (limite de 1 MB por doc)
     const ids = new Set(), emails = new Set();
     L.alunos.forEach((a, i) => {
-      const { recados, emailResp, id, ...resto } = a;
+      const { recados, emailResp, emailCreator, id, ...resto } = a;
       ids.add(id);
       b.set(F.doc(db, 'alunos', id), Object.assign(resto, { ordem: i }));
       b.set(F.doc(db, 'recados', id), { lista: recados || [] });
       const e = norm(emailResp);
-      if (e) { emails.add(e); b.set(F.doc(db, 'acessos', e), { papel: 'familia', aluno: id }); }
+      if (e) { emails.add(e); b.set(F.doc(db, 'acessos', e), { papel: 'familia', aluno: id, quem: 'pais' }); }
+      const c = norm(emailCreator);
+      if (c && c !== e) { emails.add(c); b.set(F.doc(db, 'acessos', c), { papel: 'familia', aluno: id, quem: 'creator' }); }
     });
     antes.ids.forEach(id => { if (!ids.has(id)) { b.delete(F.doc(db, 'alunos', id)); b.delete(F.doc(db, 'recados', id)); } });
     antes.emails.forEach(e => { if (!emails.has(e)) b.delete(F.doc(db, 'acessos', e)); });
     await b.commit();
     antes = { ids, emails };
+  }
+  /* Creator grava só o que é dele e o que as regras deixam: tarefas, XP (hist) e vídeos. */
+  async function salvarProgresso(a) {
+    const { db, F } = await init();
+    const L = JSON.parse(JSON.stringify(a));
+    await F.updateDoc(F.doc(db, 'alunos', a.id), { feitas: L.feitas || {}, hist: L.hist || [], videos: L.videos || [] });
   }
   /* Junta vários cliques numa gravação só. */
   function salvarDepois(S, aviso) {
@@ -132,5 +141,5 @@ window.NUVEM = (function () {
     timer = setTimeout(() => salvarTurma(ultimo).then(() => aviso && aviso(null)).catch(e => aviso && aviso(erroTxt(e))), 700);
   }
 
-  return { ativo: true, entrar, entrarGoogle, primeiroAcesso, reenviarConfirmacao, esqueci, sair, restaurar, carregar, salvarTurma, salvarDepois, erroTxt, norm };
+  return { ativo: true, entrar, entrarGoogle, primeiroAcesso, reenviarConfirmacao, esqueci, sair, restaurar, carregar, salvarTurma, salvarDepois, salvarProgresso, erroTxt, norm };
 })();
