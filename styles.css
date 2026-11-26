@@ -177,7 +177,7 @@ body.is-login { padding-bottom: 0; }
 body.is-login::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 90; opacity: .05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .login { display: grid; gap: 32px; grid-template-columns: minmax(0, 1fr); padding-block: 12px 40px; }
-@media (min-width: 920px) { .login { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: start; padding-top: 32px; } }
+@media (min-width: 920px) { .login { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: center; padding-top: 32px; } }
 .login-hero { display: grid; gap: 20px; align-content: start; min-width: 0; }
 .live { display: inline-flex; align-items: center; gap: 8px; }
 .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: pulse 2s infinite; }
@@ -240,7 +240,7 @@ body.is-login::after { content: ""; position: fixed; inset: 0; pointer-events: n
 .bdet p:nth-child(2) { color: var(--text); }
 @media (max-width: 520px) { .brow { grid-template-columns: 40px minmax(0, 1fr); } .brow .muted { display: none; } .bdet { padding-left: 0; } }
 @media (max-width: 520px) { .board li { grid-template-columns: 40px minmax(0, 1fr); } .board li .muted { display: none; } }
-.login-card { display: grid; gap: 14px; position: sticky; top: 84px; box-shadow: 0 30px 80px -40px color-mix(in srgb, var(--c) 60%, transparent); border-color: color-mix(in srgb, var(--c) 30%, var(--line)); }
+.login-card { display: grid; gap: 14px; box-shadow: 0 30px 80px -40px color-mix(in srgb, var(--c) 60%, transparent); border-color: color-mix(in srgb, var(--c) 30%, var(--line)); }
 .login-card label { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
 .login-card input { width: 100%; background: var(--bg); border: 1px solid var(--line2); border-radius: 12px; padding: 13px 14px; color: var(--text); font-size: 16px; }
 .login-card input:focus { outline: none; border-color: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 18%, transparent); }
