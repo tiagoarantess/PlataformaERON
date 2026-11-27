@@ -32,9 +32,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: rgba(10, 10, 15, .92); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .top .wrap { height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .brand { display: flex; align-items: center; gap: 12px; }
-.logo { display: grid; grid-template-columns: repeat(3, 6px); gap: 3px; }
-.logo i { width: 6px; height: 6px; border-radius: 50%; background: var(--line2); }
-.logo i.on { background: var(--accent); }
+.logo { width: 28px; height: 28px; flex: none; display: block; }
 .brand b { display: block; font-weight: 800; font-stretch: 115%; font-size: 17px; letter-spacing: -.015em; line-height: 1.05; }
 .brand .nome { display: block; height: 18px; width: auto; margin-bottom: 4px; }
 .brand small { display: block; font-size: 10px; color: var(--muted); }
